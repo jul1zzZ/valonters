@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1077637994266",
+    "project_id": "valonters-bb8cd",
+    "storage_bucket": "valonters-bb8cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1077637994266:android:19c65db44587cb7781fea3",
+        "android_client_info": {
+          "package_name": "com.example.valonters"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDce4iMifxWvIn4_4dJviYk9ZQOqp5hdNI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
