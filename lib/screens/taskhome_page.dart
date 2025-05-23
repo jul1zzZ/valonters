@@ -8,7 +8,6 @@ import '../utils/helpers.dart';
 class TaskHomeScreen extends StatefulWidget {
   final DocumentSnapshot task;
 
-  // Явно добавляем параметр key в конструктор
   const TaskHomeScreen({Key? key, required this.task}) : super(key: key);
 
   @override
@@ -28,6 +27,7 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
         'assignedTo': FirebaseAuth.instance.currentUser!.uid,
       });
       showSuccess("Задание успешно взято в работу!");
+      if (!mounted) return;  // Защита после async
       Navigator.pop(context);
     } catch (e) {
       showError("Ошибка при взятии задания: $e");
@@ -62,14 +62,15 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(data['title'] ?? '',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(
+              data['title'] ?? '',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Text('📝 Описание:\n${data['description'] ?? 'Нет описания'}'),
             const SizedBox(height: 10),
             Text('📂 Категория: ${data['category'] ?? 'Не указано'}'),
             const SizedBox(height: 10),
-
             if (selectedLatLng != null) ...[
               const Text('📍 Местоположение на карте:'),
               const SizedBox(height: 8),
@@ -78,7 +79,6 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: FlutterMap(
                   options: MapOptions(
-                    // исправлены параметры согласно новой версии flutter_map
                     initialCenter: selectedLatLng!,
                     initialZoom: 13,
                     onTap: (tapPosition, latLng) {
@@ -100,9 +100,12 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
                           point: selectedLatLng!,
                           width: 40,
                           height: 40,
-                          child: const Icon(Icons.location_pin, size: 40, color: Colors.red),
+                          child: const Icon(
+                            Icons.location_pin,
+                            size: 40,
+                            color: Colors.red,
+                          ),
                         ),
-
                       ],
                     ),
                   ],
@@ -110,10 +113,10 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
               ),
             ] else
               const Text('📍 Местоположение: Не указано'),
-
             const SizedBox(height: 10),
             Text(
-                '🕒 Время проведения: ${data['eventTime'] != null ? (data['eventTime'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'Не указано'}'),
+              '🕒 Время проведения: ${data['eventTime'] != null ? (data['eventTime'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'Не указано'}',
+            ),
             const SizedBox(height: 10),
             Text('⏱ Примерная длительность: ${data['estimatedDuration'] ?? 'Не указано'}'),
             const SizedBox(height: 10),
@@ -122,14 +125,15 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
             Text('👤 Назначено: ${data['assignedTo'] ?? 'не назначено'}'),
             const SizedBox(height: 10),
             Text(
-                '📅 Создано: ${data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : '-'}'),
+              '📅 Создано: ${data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : '-'}',
+            ),
             const SizedBox(height: 10),
             Text(
-                '✅ Выполнено: ${data['completedAt'] != null ? (data['completedAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'ещё не завершено'}'),
+              '✅ Выполнено: ${data['completedAt'] != null ? (data['completedAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'ещё не завершено'}',
+            ),
             const SizedBox(height: 10),
             Text('🔑 Создано пользователем: ${data['createdBy'] ?? '-'}'),
             const SizedBox(height: 24),
-
             const Spacer(),
             if (data['status'] == 'open')
               Center(

@@ -12,8 +12,11 @@ class GuestRequestPage extends StatefulWidget {
 class _GuestRequestPageState extends State<GuestRequestPage> {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
-  final contactController = TextEditingController(); // новое поле
+  final contactController = TextEditingController();
   final requestController = TextEditingController();
+  final locationController = TextEditingController();
+  final durationController = TextEditingController();
+  final servicesController = TextEditingController();
 
   bool isLoading = false;
 
@@ -22,9 +25,18 @@ class _GuestRequestPageState extends State<GuestRequestPage> {
     final email = emailController.text.trim();
     final contact = contactController.text.trim();
     final requestText = requestController.text.trim();
+    final location = locationController.text.trim();
+    final estimatedDuration = durationController.text.trim();
+    final services = servicesController.text.trim();
 
-    if (name.isEmpty || email.isEmpty || requestText.isEmpty || contact.isEmpty) {
-      showError("Пожалуйста, заполните все поля, включая контактную информацию");
+    if (name.isEmpty ||
+        email.isEmpty ||
+        contact.isEmpty ||
+        requestText.isEmpty ||
+        location.isEmpty ||
+        estimatedDuration.isEmpty ||
+        services.isEmpty) {
+      showError("Пожалуйста, заполните все поля");
       return;
     }
 
@@ -36,19 +48,23 @@ class _GuestRequestPageState extends State<GuestRequestPage> {
       final guestRef = await FirebaseFirestore.instance.collection('guests').add({
         'name': name,
         'email': email,
-        'contact': contact, // сохраняем контакт
+        'contact': contact,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       await FirebaseFirestore.instance.collection('guest_tasks').add({
         'guestId': guestRef.id,
         'title': requestText,
+        'description': requestText,
         'status': 'на рассмотрении',
+        'location': location,
+        'estimatedDuration': estimatedDuration,
+        'services': services,
+        'createdBy': name,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       showSuccess("Заявка успешно отправлена!");
-
       Navigator.pop(context);
     } catch (e) {
       showError("Ошибка при отправке заявки");
@@ -59,50 +75,101 @@ class _GuestRequestPageState extends State<GuestRequestPage> {
     }
   }
 
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: Colors.grey[100],
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Оставить заявку")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: "Ваше имя"),
-                textInputAction: TextInputAction.next,
-                autocorrect: true,
+      appBar: AppBar(
+        title: const Text("Оставить заявку"),
+        backgroundColor: Colors.teal,
+        elevation: 2,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              "Заполните форму заявки",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Colors.teal[700],
               ),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(labelText: "Email"),
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-              ),
-              TextField(
-                controller: contactController,
-                decoration: InputDecoration(
-                  labelText: "Контакт (Telegram, телефон или почта)",
-                ),
-                textInputAction: TextInputAction.next,
-              ),
-              TextField(
-                controller: requestController,
-                decoration: InputDecoration(labelText: "Описание заявки"),
-                maxLines: 4,
-                textInputAction: TextInputAction.done,
-                autocorrect: true,
-              ),
-              const SizedBox(height: 20),
-              isLoading
-                  ? CircularProgressIndicator()
-                  : ElevatedButton(
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: nameController,
+              decoration: _inputDecoration("Ваше имя"),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              decoration: _inputDecoration("Email"),
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: contactController,
+              decoration: _inputDecoration("Контакт (Telegram, телефон или почта)"),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: locationController,
+              decoration: _inputDecoration("Местоположение"),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: durationController,
+              decoration: _inputDecoration("Примерная длительность (в минутах)"),
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: servicesController,
+              decoration: _inputDecoration("Необходимые сервисы"),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: requestController,
+              decoration: _inputDecoration("Описание заявки"),
+              maxLines: 4,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 30),
+            isLoading
+                ? const Center(child: CircularProgressIndicator(color: Colors.teal))
+                : SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
                       onPressed: submitRequest,
-                      child: Text("Отправить заявку"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text(
+                        "Отправить заявку",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
-            ],
-          ),
+                  ),
+          ],
         ),
       ),
     );

@@ -27,6 +27,35 @@ class TaskDetailScreen extends StatelessWidget {
     }
   }
 
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 22, color: Colors.blueGrey),
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+                children: [
+                  TextSpan(
+                      text: "$label: ",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      )),
+                  TextSpan(text: value),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = task.data() as Map<String, dynamic>;
@@ -34,52 +63,83 @@ class TaskDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Детали заявки')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(data['title'] ?? 'Без названия',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
+            Text(
+              data['title'] ?? 'Без названия',
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.indigo,
+              ),
+            ),
+            const SizedBox(height: 16),
 
             if (data['photoUrl'] != null && data['photoUrl'].toString().isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 child: Image.network(
                   data['photoUrl'],
-                  height: 200,
+                  height: 220,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               ),
 
-            const SizedBox(height: 16),
-            Text('📝 Описание:\n${data['description'] ?? 'Нет описания'}'),
-            const SizedBox(height: 10),
-            Text('📂 Категория: ${data['category'] ?? 'Не указано'}'),
-            const SizedBox(height: 10),
-            Text('📍 Местоположение: ${data['location'] ?? 'Не указано'}'),
-            const SizedBox(height: 10),
-            Text('🕒 Время проведения: ${data['eventTime'] != null ? (data['eventTime'] as Timestamp).toDate().toLocal().toString() : 'Не указано'}'),
-            const SizedBox(height: 10),
-            Text('⏱ Примерная длительность: ${data['estimatedDuration'] ?? 'Не указано'}'),
-            const SizedBox(height: 10),
-            Text('🧰 Необходимые сервисы: ${data['services'] ?? 'Не указано'}'),
-            const SizedBox(height: 10),
-            Text('👤 Назначено: ${data['assignedTo'] ?? 'не назначено'}'),
-            const SizedBox(height: 10),
-            Text('📅 Создано: ${data['createdAt']?.toDate()?.toLocal() ?? '-'}'),
-            const SizedBox(height: 10),
-            Text('✅ Выполнено: ${data['completedAt']?.toDate()?.toLocal() ?? 'ещё не завершено'}'),
-            const SizedBox(height: 10),
-            Text('🔑 Создано пользователем: ${data['createdBy'] ?? '-'}'),
-            const SizedBox(height: 24),
+            if (data['photoUrl'] != null && data['photoUrl'].toString().isNotEmpty)
+              const SizedBox(height: 24),
+
+            _buildInfoRow(Icons.description, "Описание", data['description'] ?? 'Нет описания'),
+            _buildInfoRow(Icons.category, "Категория", data['category'] ?? 'Не указано'),
+            _buildInfoRow(Icons.location_on, "Местоположение", data['location'] ?? 'Не указано'),
+            _buildInfoRow(
+              Icons.access_time,
+              "Время проведения",
+              data['eventTime'] != null
+                  ? (data['eventTime'] as Timestamp).toDate().toLocal().toString()
+                  : 'Не указано',
+            ),
+            _buildInfoRow(Icons.timer, "Примерная длительность", data['estimatedDuration'] ?? 'Не указано'),
+            _buildInfoRow(Icons.build, "Необходимые сервисы", data['services'] ?? 'Не указано'),
+            _buildInfoRow(Icons.person, "Назначено", data['assignedTo'] ?? 'не назначено'),
+            _buildInfoRow(
+              Icons.calendar_today,
+              "Создано",
+              data['createdAt'] != null
+                  ? (data['createdAt'] as Timestamp).toDate().toLocal().toString()
+                  : '-',
+            ),
+            _buildInfoRow(
+              Icons.done_all,
+              "Выполнено",
+              data['completedAt'] != null
+                  ? (data['completedAt'] as Timestamp).toDate().toLocal().toString()
+                  : 'ещё не завершено',
+            ),
+            _buildInfoRow(Icons.vpn_key, "Создано пользователем", data['createdBy'] ?? '-'),
+
+            const SizedBox(height: 30),
 
             if (data['status'] != 'completed')
               Center(
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.check),
-                  label: const Text("Завершить"),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                    child: Text(
+                      "Завершить задание",
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 4,
+                  ),
                   onPressed: () {
                     Navigator.push(
                       context,

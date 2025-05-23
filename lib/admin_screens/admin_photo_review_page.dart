@@ -14,7 +14,7 @@ class AdminPhotoReviewScreen extends StatelessWidget {
         'reviewedAt': Timestamp.now(),
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Статус задачи обновлен: $newStatus')),
+        SnackBar(content: Text('Статус задачи обновлён: $newStatus')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -25,9 +25,12 @@ class AdminPhotoReviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Проверка фотоотчётов'),
+        title: const Text('Проверка фотоотчётов'),
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
@@ -35,66 +38,96 @@ class AdminPhotoReviewScreen extends StatelessWidget {
             .where('status', isEqualTo: 'pending_review')
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
           final tasks = snapshot.data!.docs;
           if (tasks.isEmpty) {
-            return Center(child: Text('Нет заявок на проверку'));
+            return const Center(
+              child: Text(
+                'Нет заявок на проверку',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            );
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(12),
             itemCount: tasks.length,
             itemBuilder: (context, index) {
               final task = tasks[index];
               final data = task.data() as Map<String, dynamic>;
 
-              // Получаем base64 фотоотчёт из completionPhoto
               final String? base64Photo = data['completionPhoto'];
-
               Widget photoWidget;
 
               if (base64Photo != null && base64Photo.isNotEmpty) {
                 try {
                   Uint8List bytes = base64Decode(base64Photo);
                   photoWidget = ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.memory(bytes, height: 200, width: double.infinity, fit: BoxFit.cover),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(
+                      bytes,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
                   );
                 } catch (e) {
-                  photoWidget = Text('Ошибка при загрузке фото', style: TextStyle(color: Colors.red));
+                  photoWidget = const Text(
+                    'Ошибка при загрузке фото',
+                    style: TextStyle(color: Colors.red),
+                  );
                 }
               } else {
-                photoWidget = Text('Фотоотчет отсутствует', style: TextStyle(fontStyle: FontStyle.italic));
+                photoWidget = const Text(
+                  'Фотоотчет отсутствует',
+                  style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                );
               }
 
               return Card(
-                margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                elevation: 4,
+                shadowColor: Colors.black26,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                margin: const EdgeInsets.symmetric(vertical: 10),
                 child: Padding(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         data['title'] ?? 'Без названия',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 6),
-                      Text(data['description'] ?? 'Нет описания'),
-                      SizedBox(height: 10),
+                      const SizedBox(height: 6),
+                      Text(
+                        data['description'] ?? 'Нет описания',
+                        style: const TextStyle(fontSize: 14, color: Colors.black87),
+                      ),
+                      const SizedBox(height: 10),
                       photoWidget,
-                      SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton(
+                          OutlinedButton(
                             onPressed: () => _updateTaskStatus(task.id, 'rejected', context),
-                            style: TextButton.styleFrom(foregroundColor: Colors.red),
-                            child: Text('Отклонить'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Отклонить'),
                           ),
-                          SizedBox(width: 16),
+                          const SizedBox(width: 16),
                           ElevatedButton(
                             onPressed: () => _updateTaskStatus(task.id, 'completed', context),
-                            child: Text('Подтвердить'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Подтвердить'),
                           ),
                         ],
                       ),

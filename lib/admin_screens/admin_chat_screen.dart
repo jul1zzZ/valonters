@@ -15,29 +15,28 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
   final Map<String, Map<String, String>> _userCache = {
     'admin': {
       'name': 'Администратор',
-      'avatarUrl': '', // сюда можно вставить URL или оставить пустым
+      'avatarUrl': '',
     },
   };
 
   Future<Map<String, String>> _getUserInfo(String userId) async {
-  if (_userCache.containsKey(userId)) return _userCache[userId]!;
+    if (_userCache.containsKey(userId)) return _userCache[userId]!;
 
-  try {
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    final data = userDoc.data();
-    final name = data?['name'] ?? 'Без имени';
-    final avatarUrl = data?['avatarUrl'] ?? '';
-    final Map<String, String> info = {
-      'name': name,
-      'avatarUrl': avatarUrl,
-    };
-    _userCache[userId] = info;
-    return info;
-  } catch (e) {
-    return {'name': 'Ошибка', 'avatarUrl': ''};
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final data = userDoc.data();
+      final name = data?['name'] ?? 'Без имени';
+      final avatarUrl = data?['avatarUrl'] ?? '';
+      final Map<String, String> info = {
+        'name': name,
+        'avatarUrl': avatarUrl,
+      };
+      _userCache[userId] = info;
+      return info;
+    } catch (e) {
+      return {'name': 'Ошибка', 'avatarUrl': ''};
+    }
   }
-  }
-
 
   void sendMessage(String text) async {
     await FirebaseFirestore.instance
@@ -55,6 +54,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final messagesStream = FirebaseFirestore.instance
         .collection('chats')
         .doc(widget.chatId)
@@ -63,18 +63,36 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         .snapshots();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Чат с пользователем')),
+      appBar: AppBar(
+        title: const Text('Чат с пользователем'),
+        backgroundColor: theme.colorScheme.primaryContainer,
+        foregroundColor: theme.colorScheme.onPrimaryContainer,
+        centerTitle: true,
+        elevation: 2,
+      ),
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder(
+            child: StreamBuilder<QuerySnapshot>(
               stream: messagesStream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
                 final messages = snapshot.data!.docs;
+
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "Нет сообщений",
+                      style: theme.textTheme.bodyLarge?.copyWith(color: theme.disabledColor),
+                    ),
+                  );
+                }
 
                 return ListView.builder(
                   reverse: true,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
@@ -94,39 +112,72 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                             child: Row(
                               mainAxisAlignment:
                                   isAdmin ? MainAxisAlignment.end : MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (!isAdmin)
                                   CircleAvatar(
+                                    radius: 18,
                                     backgroundImage: avatarUrl.isNotEmpty
                                         ? NetworkImage(avatarUrl)
                                         : null,
-                                    child: avatarUrl.isEmpty ? const Icon(Icons.person) : null,
+                                    child: avatarUrl.isEmpty
+                                        ? Icon(Icons.person, color: theme.colorScheme.onSurfaceVariant)
+                                        : null,
                                   ),
-                                const SizedBox(width: 8),
+                                if (!isAdmin) const SizedBox(width: 8),
                                 Flexible(
                                   child: Column(
                                     crossAxisAlignment: isAdmin
                                         ? CrossAxisAlignment.end
                                         : CrossAxisAlignment.start,
                                     children: [
-                                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 2),
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: isAdmin ? Colors.green[100] : Colors.grey[300],
-                                          borderRadius: BorderRadius.circular(10),
+                                      Text(
+                                        name,
+                                        style: theme.textTheme.labelMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: isAdmin
+                                              ? theme.colorScheme.primary
+                                              : theme.colorScheme.onSurfaceVariant,
                                         ),
-                                        child: Text(msg['text']),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: isAdmin
+                                              ? theme.colorScheme.primaryContainer
+                                              : theme.colorScheme.surfaceVariant,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: const Radius.circular(12),
+                                            topRight: const Radius.circular(12),
+                                            bottomLeft: Radius.circular(isAdmin ? 12 : 0),
+                                            bottomRight: Radius.circular(isAdmin ? 0 : 12),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.05),
+                                              blurRadius: 3,
+                                              offset: const Offset(1, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          msg['text'],
+                                          style: theme.textTheme.bodyMedium,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
+                                if (isAdmin) const SizedBox(width: 8),
                                 if (isAdmin)
-                                  const SizedBox(width: 8),
-                                if (isAdmin)
-                                  const CircleAvatar(
-                                    child: Icon(Icons.admin_panel_settings),
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: theme.colorScheme.primary,
+                                    child: Icon(
+                                      Icons.admin_panel_settings,
+                                      color: theme.colorScheme.onPrimary,
+                                    ),
                                   ),
                               ],
                             ),
@@ -139,22 +190,50 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                )
+              ],
+            ),
             child: Row(
               children: [
-                Expanded(child: TextField(controller: _controller)),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Введите сообщение...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      fillColor: theme.colorScheme.surfaceVariant,
+                      filled: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    minLines: 1,
+                    maxLines: 5,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: Icon(Icons.send, color: theme.colorScheme.primary),
                   onPressed: () {
                     if (_controller.text.trim().isNotEmpty) {
                       sendMessage(_controller.text.trim());
                     }
                   },
-                )
+                  tooltip: 'Отправить',
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

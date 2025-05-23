@@ -8,7 +8,6 @@ import 'package:valonters/screens/login_page.dart';
 import 'admin_support_list_page.dart'; 
 import 'package:valonters/admin_screens/admin_photo_review_page.dart';
 
-
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
 
@@ -20,12 +19,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    AdminTasksPage(),
-    AdminUsersPage(),
-    AdminBlockedUsersPage(),
-    AdminGuestPage(),
-    AdminSupportListPage(),
-    AdminPhotoReviewScreen(),  // Добавили страницу проверки фотоотчетов
+    const AdminTasksPage(),
+    const AdminUsersPage(),
+    const AdminBlockedUsersPage(),
+    const AdminGuestPage(),
+    const AdminSupportListPage(),
+     AdminPhotoReviewScreen(),  // Страница проверки фотоотчетов
   ];
 
   final List<String> _titles = [
@@ -34,8 +33,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     'Заблокированные',
     'Заявки гостей',
     'Поддержка',
-    'Проверка фотоотчетов',  // Заголовок для новой страницы
-
+    'Проверка фотоотчетов',
   ];
 
   Future<void> _logout(BuildContext context) async {
@@ -48,23 +46,35 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Админ-панель — ${_titles[_selectedIndex]}'),
+        title: Text(
+          'Админ-панель — ${_titles[_selectedIndex]}',
+          style: theme.appBarTheme.titleTextStyle,
+        ),
+        backgroundColor: theme.appBarTheme.backgroundColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Выход',
             onPressed: () => _logout(context),
+            color: theme.appBarTheme.foregroundColor,
           ),
         ],
+        elevation: theme.appBarTheme.elevation,
+        centerTitle: theme.appBarTheme.centerTitle,
       ),
-      body: _pages[_selectedIndex],
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: _pages[_selectedIndex],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: theme.colorScheme.primary,
+        unselectedItemColor: theme.disabledColor,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(

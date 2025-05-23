@@ -28,7 +28,9 @@ class _CompleteTaskScreenState extends State<CompleteTaskScreen> {
 
   Future<void> _submit() async {
     if (_image == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Прикрепите фото!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Прикрепите фото!')),
+      );
       return;
     }
 
@@ -37,45 +39,107 @@ class _CompleteTaskScreenState extends State<CompleteTaskScreen> {
     final bytes = await _image!.readAsBytes();
     final base64Image = base64Encode(bytes);
 
-    await FirebaseFirestore.instance.collection('tasks').doc(widget.taskId).update({
-      'completionPhoto': base64Image,
-      'status': 'pending_review',
-    });
+    try {
+      await FirebaseFirestore.instance.collection('tasks').doc(widget.taskId).update({
+        'completionPhoto': base64Image,
+        'status': 'pending_review',
+      });
 
-    setState(() => _loading = false);
-    Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка при отправке фотоотчёта')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: Colors.grey[100],
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('Подтверждение выполнения')),
+      appBar: AppBar(
+        title: const Text('Подтверждение выполнения'),
+        backgroundColor: Colors.teal,
+        elevation: 3,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24),
         child: _loading
-            ? Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator(color: Colors.teal))
             : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Пожалуйста, загрузите фотоотчёт для подтверждения выполнения задания.'),
-                  SizedBox(height: 20),
-                  _image != null
-                      ? Image.file(_image!, height: 200)
-                      : Container(
-                          height: 200,
-                          color: Colors.grey[300],
-                          child: Center(child: Text('Нет изображения')),
-                        ),
-                  SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.photo),
-                    label: Text('Выбрать фото'),
-                    onPressed: _pickImage,
+                  Text(
+                    'Пожалуйста, загрузите фотоотчёт для подтверждения выполнения задания.',
+                    style: theme.textTheme.titleMedium?.copyWith(color: Colors.teal[800]),
+                    textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 24),
+                  Container(
+                    height: 220,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade400),
+                    ),
+                    child: _image != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.file(
+                              _image!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              'Нет изображения',
+                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Выбрать фото'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal[600],
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _submit,
-                    child: Text('Отправить на проверку'),
-                  )
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text(
+                      'Отправить на проверку',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
               ),
       ),

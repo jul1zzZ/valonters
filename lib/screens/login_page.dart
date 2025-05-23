@@ -13,8 +13,10 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  bool _isLoading = false;
 
   void login() async {
+    setState(() => _isLoading = true);
     try {
       final authResult = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text.trim(),
@@ -23,12 +25,10 @@ class _LoginPageState extends State<LoginPage> {
 
       final uid = authResult.user!.uid;
 
-      // Проверяем роль в коллекции users
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
       String? role = userDoc.data()?['role'];
 
-      // Если роль не найдена в users — попробуем в guests
       if (role == null) {
         final guestDoc = await FirebaseFirestore.instance.collection('guests').doc(uid).get();
         if (guestDoc.exists) {
@@ -37,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (role == null) {
-        role = 'user'; // По умолчанию обычный пользователь
+        role = 'user';
       }
 
       showSuccess("Успешный вход!");
@@ -55,35 +55,92 @@ class _LoginPageState extends State<LoginPage> {
       showError(e.message ?? "Ошибка входа");
     } catch (e) {
       showError("Ошибка при получении роли");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Вход")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(
+        title: const Text("Вход"),
+        backgroundColor: Colors.teal,
+        elevation: 2,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(controller: emailController, decoration: const InputDecoration(labelText: "Email")),
-            TextField(controller: passwordController, obscureText: true, decoration: const InputDecoration(labelText: "Пароль")),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: login, child: const Text("Войти")),
+            Text(
+              "Добро пожаловать!",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.teal[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: "Email",
+                prefixIcon: const Icon(Icons.email),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "Пароль",
+                prefixIcon: const Icon(Icons.lock),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        "Войти",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/register'),
+              onPressed: _isLoading ? null : () => Navigator.pushNamed(context, '/register'),
               child: const Text("Нет аккаунта? Зарегистрироваться"),
             ),
             TextButton(
-              onPressed: () => Navigator.pushNamed(context, '/reset'),
+              onPressed: _isLoading ? null : () => Navigator.pushNamed(context, '/reset'),
               child: const Text("Забыли пароль?"),
             ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/guestRequest');
-              },
-              child: const Text("Оставить заявку"),
+            const SizedBox(height: 24),
+            Center(
+              child: TextButton(
+                onPressed: _isLoading ? null : () => Navigator.pushNamed(context, '/guestRequest'),
+                child: Text(
+                  "Оставить заявку",
+                  style: TextStyle(
+                    color: Colors.teal[700],
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

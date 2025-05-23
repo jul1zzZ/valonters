@@ -8,7 +8,6 @@ import 'screens/home_page.dart';
 import 'admin_screens/admhome_page.dart';
 import 'screens/guest_request_page.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
@@ -20,9 +19,46 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseTheme = ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal);
+    
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'VolunteerHelp',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
+      theme: baseTheme.copyWith(
+        textTheme: baseTheme.textTheme.apply(
+          bodyColor: Colors.teal[900],
+          displayColor: Colors.teal[900],
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.teal[700],
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.teal[700]!, width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          labelStyle: TextStyle(color: Colors.teal[800]),
+        ),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.teal[700],
+          foregroundColor: Colors.white,
+          elevation: 2,
+          centerTitle: true,
+          titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        scaffoldBackgroundColor: Colors.grey[50],
+      ),
       home: FirebaseAuth.instance.currentUser == null
           ? const LoginPage()
           : const HomePage(),

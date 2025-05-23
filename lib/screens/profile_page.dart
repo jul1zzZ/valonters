@@ -40,21 +40,49 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
+  String translateRole(String role) {
+    switch (role) {
+      case 'volunteer':
+        return 'Волонтёр';
+      case 'admin':
+        return 'Администратор';
+      case 'guest':
+        return 'Гость';
+      default:
+        return role;
+    }
+  }
+
   Color getStatusColor(String status) {
     switch (status) {
       case 'active':
-        return Colors.orange.shade200;
+        return Colors.orange;
       case 'pending_review':
-        return Colors.blue.shade200;
+        return Colors.blue;
       case 'completed':
-        return Colors.green.shade200;
+        return Colors.green;
       case 'rejected':
-        return Colors.red.shade200;
+        return Colors.red;
       case 'in_progress':
-        return Colors.orange.shade300;
+        return Colors.amber;
       default:
-        return Colors.white;
+        return Colors.grey;
     }
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.teal),
+          SizedBox(width: 8),
+          Text('$label:', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(width: 6),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -62,7 +90,10 @@ class ProfileScreen extends StatelessWidget {
     final user = _auth.currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Профиль')),
+      appBar: AppBar(
+        title: Text('Профиль'),
+        backgroundColor: Colors.teal,
+      ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _getUserData(),
         builder: (context, snapshot) {
@@ -73,19 +104,42 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                CircleAvatar(radius: 40, child: Icon(Icons.person, size: 40)),
-                SizedBox(height: 8),
-                Text(userData['name'] ?? '', style: TextStyle(fontSize: 18)),
-                Text(user?.email ?? ''),
-                Text('Телефон: ${userData['phone'] ?? 'не указан'}'),
-                Text('Дата регистрации: ${userData['registrationDate'] != null ? (userData['registrationDate'] as Timestamp).toDate().toLocal() : 'не указана'}'),
-                Text('Роль: ${userData['role'] ?? ''}'),
-                SizedBox(height: 20),
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.teal,
+                  child: Icon(Icons.person, size: 50, color: Colors.white),
+                ),
+                SizedBox(height: 12),
+                Text(userData['name'] ?? '', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                SizedBox(height: 4),
+                Text(user?.email ?? '', style: TextStyle(color: Colors.grey[700])),
+                SizedBox(height: 16),
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        _buildInfoRow(Icons.phone, 'Телефон', userData['phone'] ?? 'не указан'),
+                        _buildInfoRow(
+                          Icons.calendar_today,
+                          'Дата регистрации',
+                          userData['registrationDate'] != null
+                              ? (userData['registrationDate'] as Timestamp).toDate().toLocal().toString().split(' ')[0]
+                              : 'не указана',
+                        ),
+                        _buildInfoRow(Icons.badge, 'Роль', translateRole(userData['role'] ?? '')),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _getUserTasks(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return CircularProgressIndicator();
+                      if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
 
                       final tasks = snapshot.data!.docs;
                       final completedTasks = tasks.where((task) {
@@ -93,45 +147,35 @@ class ProfileScreen extends StatelessWidget {
                         return data != null && data['status'] == 'completed';
                       }).toList();
 
+                      double totalWorkedHours = 0;
+                      for (var task in completedTasks) {
+                        final data = task.data() as Map<String, dynamic>?;
+                        if (data != null && data.containsKey('estimatedDuration')) {
+                          final duration = data['estimatedDuration'];
+                          if (duration is int) totalWorkedHours += duration.toDouble();
+                          else if (duration is double) totalWorkedHours += duration;
+                          else if (duration is String) {
+                            final parsed = double.tryParse(duration);
+                            if (parsed != null) totalWorkedHours += parsed;
+                          }
+                        }
+                      }
+
                       final sortedTasks = List.from(tasks)..sort((a, b) {
-                        final dataA = a.data() as Map<String, dynamic>?;
-                        final dataB = b.data() as Map<String, dynamic>?;
-                        final statusA = dataA?['status'] ?? '';
-                        final statusB = dataB?['status'] ?? '';
-                        if (statusA == statusB) return 0;
+                        final statusA = (a.data() as Map)['status'] ?? '';
+                        final statusB = (b.data() as Map)['status'] ?? '';
                         if (statusA == 'completed') return 1;
                         if (statusB == 'completed') return -1;
                         return 0;
                       });
 
-                      // Подсчёт суммарных часов по completed задачам
-                      double totalWorkedHours = 0;
-for (var task in completedTasks) {
-  final data = task.data() as Map<String, dynamic>?;
-  if (data != null && data.containsKey('estimatedDuration')) {
-    final duration = data['estimatedDuration'];
-    if (duration is int) {
-      totalWorkedHours += duration.toDouble();
-    } else if (duration is double) {
-      totalWorkedHours += duration;
-    } else if (duration is String) {
-      // Пробуем парсить строку в число
-      final parsed = double.tryParse(duration);
-      if (parsed != null) {
-        totalWorkedHours += parsed;
-      }
-    }
-  }
-}
-
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Выполнено заявок: ${completedTasks.length}'),
+                          Text('Выполнено заявок: ${completedTasks.length}', style: TextStyle(fontWeight: FontWeight.bold)),
                           Text('Всего заявок: ${tasks.length}'),
                           Text('Отработано часов: ${totalWorkedHours.toStringAsFixed(1)}'),
-                          Divider(),
-                          Text('История заявок:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          SizedBox(height: 10),
                           Expanded(
                             child: ListView.builder(
                               itemCount: sortedTasks.length,
@@ -139,52 +183,53 @@ for (var task in completedTasks) {
                                 final task = sortedTasks[index];
                                 final data = task.data() as Map<String, dynamic>?;
                                 final status = data?['status'] ?? '';
+
                                 return Card(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 3,
+                                  margin: EdgeInsets.symmetric(vertical: 6),
                                   child: ListTile(
-                                    title: Text(data?['title'] ?? ''),
-                                    subtitle: Text(data?['description'] ?? ''),
-                                    trailing: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxHeight: 56,
-                                        maxWidth: 120,
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                            decoration: BoxDecoration(
-                                              color: getStatusColor(status),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              translateStatus(status),
-                                              style: TextStyle(color: Colors.white, fontSize: 12),
-                                              textAlign: TextAlign.center,
-                                            ),
+                                    contentPadding: EdgeInsets.all(12),
+                                    title: Text(data?['title'] ?? '', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(height: 4),
+                                        Text(data?['description'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                                        SizedBox(height: 6),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: getStatusColor(status),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
-                                          if (status == 'active' || status == 'in_progress')
-                                            SizedBox(
-                                              height: 28,
-                                              child: TextButton(
-                                                style: TextButton.styleFrom(
-                                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                                  minimumSize: Size(0, 28),
+                                          child: Text(
+                                            translateStatus(status),
+                                            style: TextStyle(color: Colors.white, fontSize: 12),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: (status == 'active' || status == 'in_progress')
+                                        ? ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => CompleteTaskScreen(taskId: task.id),
                                                 ),
-                                                child: Text('Завершить', style: TextStyle(fontSize: 12)),
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) => CompleteTaskScreen(taskId: task.id),
-                                                    ),
-                                                  );
-                                                },
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.teal,
+                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
                                               ),
                                             ),
-                                        ],
-                                      ),
-                                    ),
+                                            child: Text('Завершить', style: TextStyle(fontSize: 12)),
+                                          )
+                                        : null,
                                     onTap: () {
                                       Navigator.push(
                                         context,

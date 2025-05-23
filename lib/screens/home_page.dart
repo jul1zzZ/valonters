@@ -24,66 +24,21 @@ class _HomePageState extends State<HomePage> {
     final now = Timestamp.now();
 
     final tasks = [
-      {
-        "title": "Раздать еду бездомным",
-        "description": "Помочь с раздачей горячей еды на вокзале.",
-      },
-      {
-        "title": "Помощь пожилому соседу",
-        "description": "Сходить в магазин и аптеку по списку.",
-      },
-      {
-        "title": "Уборка в парке",
-        "description": "Присоединиться к субботнику в Парке Победы.",
-      },
-      {
-        "title": "Поддержка на мероприятии",
-        "description": "Помочь с организацией благотворительного концерта.",
-      },
-      {
-        "title": "Разнести листовки",
-        "description": "Распространить листовки о сборе помощи по району.",
-      },
-      {
-        "title": "Сбор одежды",
-        "description": "Сортировать вещи для передачи нуждающимся.",
-      },
-      {
-        "title": "Наставник школьника",
-        "description": "Провести час с ребёнком из неблагополучной семьи.",
-      },
-      {
-        "title": "Онлайн поддержка",
-        "description": "Поговорить с пожилыми людьми по телефону.",
-      },
-      {
-        "title": "Уборка территории приюта",
-        "description": "Убрать двор и помещения приюта.",
-      },
-      {
-        "title": "Помощь на кухне",
-        "description": "Порезать овощи и помочь на кухне волонтёрского центра.",
-      },
-      {
-        "title": "Организация игр",
-        "description": "Провести игры для детей из детского дома.",
-      },
-      {
-        "title": "Сопровождение на прогулке",
-        "description": "Прогулка с инвалидами-колясочниками по скверу.",
-      },
-      {
-        "title": "Проверка аптечек",
-        "description": "Проверить и пополнить аптечки в общественных местах.",
-      },
-      {
-        "title": "Фотограф на мероприятие",
-        "description": "Сделать фотографии с праздника в Доме ветеранов.",
-      },
-      {
-        "title": "Ремонт детской площадки",
-        "description": "Покрасить качели и убрать мусор на детской площадке.",
-      },
+      {"title": "Раздать еду бездомным", "description": "Помочь с раздачей горячей еды на вокзале."},
+      {"title": "Помощь пожилому соседу", "description": "Сходить в магазин и аптеку по списку."},
+      {"title": "Уборка в парке", "description": "Присоединиться к субботнику в Парке Победы."},
+      {"title": "Поддержка на мероприятии", "description": "Помочь с организацией благотворительного концерта."},
+      {"title": "Разнести листовки", "description": "Распространить листовки о сборе помощи по району."},
+      {"title": "Сбор одежды", "description": "Сортировать вещи для передачи нуждающимся."},
+      {"title": "Наставник школьника", "description": "Провести час с ребёнком из неблагополучной семьи."},
+      {"title": "Онлайн поддержка", "description": "Поговорить с пожилыми людьми по телефону."},
+      {"title": "Уборка территории приюта", "description": "Убрать двор и помещения приюта."},
+      {"title": "Помощь на кухне", "description": "Порезать овощи и помочь на кухне волонтёрского центра."},
+      {"title": "Организация игр", "description": "Провести игры для детей из детского дома."},
+      {"title": "Сопровождение на прогулке", "description": "Прогулка с инвалидами-колясочниками по скверу."},
+      {"title": "Проверка аптечек", "description": "Проверить и пополнить аптечки в общественных местах."},
+      {"title": "Фотограф на мероприятие", "description": "Сделать фотографии с праздника в Доме ветеранов."},
+      {"title": "Ремонт детской площадки", "description": "Покрасить качели и убрать мусор на детской площадке."},
     ];
 
     for (var task in tasks) {
@@ -122,14 +77,16 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       TaskPage(onTakeTask: takeTaskInProgress),
-      ProfileScreen(), 
-      FaqPage(),
+       ProfileScreen(),
+      const FaqPage(),
       SupportChatScreen(userId: FirebaseAuth.instance.currentUser!.uid),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Добро пожаловать!"),
+        backgroundColor: Colors.blueAccent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -142,30 +99,23 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
+      body: Container(
+        color: Colors.grey.shade100,
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _pages,
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Главная',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Профиль',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'FAQ',
-          ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.chat),
-                 label: 'Чат'
-          ), 
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Главная'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: 'Профиль'),
+          BottomNavigationBarItem(icon: Icon(Icons.help_outline), label: 'FAQ'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Чат'),
         ],
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -208,22 +158,33 @@ class TaskPage extends StatelessWidget {
         }
 
         return ListView.builder(
+          padding: const EdgeInsets.all(12),
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final task = tasks[index];
             return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              elevation: 3,
               child: ListTile(
-                title: Text(task['title']),
-                subtitle: Text(task['description']),
+                contentPadding: const EdgeInsets.all(16),
+                title: Text(
+                  task['title'],
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(task['description']),
+                ),
                 trailing: ElevatedButton(
-                  child: const Text("Взять в работу"),
-                  onPressed: () {
-                    onTakeTask(task.id);
-                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("Взять"),
+                  onPressed: () => onTakeTask(task.id),
                 ),
                 onTap: () {
-                  // Переход к экрану с деталями задачи
                   Navigator.push(
                     context,
                     MaterialPageRoute(

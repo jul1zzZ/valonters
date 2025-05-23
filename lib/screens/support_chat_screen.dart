@@ -47,18 +47,32 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         .snapshots();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Чат с поддержкой')),
+      appBar: AppBar(
+        title: const Text('Чат с поддержкой'),
+        backgroundColor: Colors.teal,
+        elevation: 2,
+      ),
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder(
+            child: StreamBuilder<QuerySnapshot>(
               stream: messagesStream,
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!.docs;
 
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Сообщений пока нет',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
+
                 return ListView.builder(
                   reverse: true,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
@@ -69,7 +83,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                       future: getUserData(senderId),
                       builder: (context, userSnapshot) {
                         if (!userSnapshot.hasData) {
-                          return const SizedBox(); // Пусто, пока загружается
+                          return const SizedBox();
                         }
 
                         final user = userSnapshot.data!;
@@ -79,31 +93,59 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                         return Align(
                           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                           child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                            margin: const EdgeInsets.symmetric(vertical: 5),
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.75,
+                            ),
                             child: Row(
                               mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (!isUser) _buildAvatar(photoUrl, userName),
+                                const SizedBox(width: 8),
                                 Flexible(
                                   child: Column(
                                     crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         userName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        margin: const EdgeInsets.only(top: 5),
-                                        decoration: BoxDecoration(
-                                          color: isUser ? Colors.blue[100] : Colors.grey[300],
-                                          borderRadius: BorderRadius.circular(10),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: Colors.black87,
                                         ),
-                                        child: Text(msg['text']),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                        decoration: BoxDecoration(
+                                          color: isUser ? Colors.teal.shade100 : Colors.grey.shade300,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: const Radius.circular(12),
+                                            topRight: const Radius.circular(12),
+                                            bottomLeft: Radius.circular(isUser ? 12 : 0),
+                                            bottomRight: Radius.circular(isUser ? 0 : 12),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.05),
+                                              offset: const Offset(1, 1),
+                                              blurRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          msg['text'],
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Colors.grey[900],
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 if (isUser) _buildAvatar(photoUrl, userName),
                               ],
                             ),
@@ -116,22 +158,54 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                Expanded(child: TextField(controller: _controller)),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    if (_controller.text.trim().isNotEmpty) {
-                      sendMessage(_controller.text.trim());
-                    }
-                  },
-                )
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, -2),
+                ),
               ],
             ),
-          )
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        hintText: 'Напишите сообщение...',
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.teal,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: () {
+                        if (_controller.text.trim().isNotEmpty) {
+                          sendMessage(_controller.text.trim());
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -146,7 +220,11 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     } else {
       return CircleAvatar(
         radius: 18,
-        child: Text(name.isNotEmpty ? name[0].toUpperCase() : "?"),
+        backgroundColor: Colors.teal.shade300,
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : "?",
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       );
     }
   }
