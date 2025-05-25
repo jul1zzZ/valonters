@@ -87,7 +87,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                         }
 
                         final user = userSnapshot.data!;
-                        final userName = user['name'] ?? 'Неизвестный';
+                        final userName = user['name'] ?? 'Администратор';
                         final photoUrl = user['photoUrl'];
 
                         return Align(

@@ -36,9 +36,13 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
 
-      if (role == null) {
-        role = 'user';
+      if (role == 'banned') {
+        showError("Ваш аккаунт заблокирован. Обратитесь к администратору.");
+        FirebaseAuth.instance.signOut(); // на всякий случай выйти из аккаунта
+        setState(() => _isLoading = false);
+        return;
       }
+
 
       showSuccess("Успешный вход!");
 
