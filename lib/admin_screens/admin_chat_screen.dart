@@ -48,8 +48,32 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
       'senderRole': 'admin',
       'text': text,
       'timestamp': Timestamp.now(),
+      'isRead': true,  // админские сообщения сразу считаем прочитанными
     });
     _controller.clear();
+  }
+
+  /// Помечаем все входящие от пользователя непрочитанные сообщения как прочитанные
+  Future<void> _markMessagesAsRead() async {
+    final messagesRef = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .collection('messages');
+
+    final unreadMessagesSnapshot = await messagesRef
+        .where('senderRole', isEqualTo: 'user')
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (final doc in unreadMessagesSnapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    if (unreadMessagesSnapshot.docs.isNotEmpty) {
+      await batch.commit();
+    }
   }
 
   @override
@@ -80,6 +104,9 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final messages = snapshot.data!.docs;
+
+                // Помечаем непрочитанные сообщения как прочитанные при каждом обновлении списка
+                _markMessagesAsRead();
 
                 if (messages.isEmpty) {
                   return Center(

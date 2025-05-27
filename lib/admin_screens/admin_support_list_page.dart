@@ -15,6 +15,18 @@ class AdminSupportListPage extends StatelessWidget {
     }
   }
 
+  Future<bool> _hasUnreadMessages(String chatId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .where('sender', isEqualTo: 'user')
+        .where('isReadByAdmin', isEqualTo: false)
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatsStream = FirebaseFirestore.instance
@@ -49,10 +61,15 @@ class AdminSupportListPage extends StatelessWidget {
               final createdAt = chat['createdAt'].toDate();
               final formattedDate = DateFormat('dd.MM.yyyy HH:mm').format(createdAt);
 
-              return FutureBuilder<String>(
-                future: _getUserEmail(userId),
-                builder: (context, userSnapshot) {
-                  final userEmail = userSnapshot.data ?? 'Загрузка...';
+              return FutureBuilder(
+                future: Future.wait([
+                  _getUserEmail(userId),
+                  _hasUnreadMessages(chat.id),
+                ]),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+                  final userEmail = snapshot.data![0] as String;
+                  final hasUnread = snapshot.data![1] as bool;
 
                   return Card(
                     elevation: 3,
@@ -60,7 +77,24 @@ class AdminSupportListPage extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      leading: const Icon(Icons.chat, color: Colors.deepPurple),
+                      leading: Stack(
+                        children: [
+                          const Icon(Icons.chat, color: Colors.deepPurple, size: 28),
+                          if (hasUnread)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                       title: Text(
                         userEmail,
                         style: const TextStyle(fontWeight: FontWeight.bold),

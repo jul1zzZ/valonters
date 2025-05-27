@@ -7,6 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'screens/home_page.dart';
 import 'admin_screens/admhome_page.dart';
 import 'screens/guest_request_page.dart';
+import 'screens/add_task_screen.dart';
+import 'screens/organizer_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,7 +69,13 @@ class MyApp extends StatelessWidget {
         '/reset': (context) => ResetPasswordPage(),
         '/home': (context) => const HomePage(),
         '/admin': (context) => const AdminHomePage(),
+        '/login': (context) => LoginPage(),
         '/guestRequest': (context) => const GuestRequestPage(),
+        '/organizerHome': (context) => OrganizerHomePage(userId: FirebaseAuth.instance.currentUser!.uid),
+        '/addTask': (context) {
+          final userId = ModalRoute.of(context)!.settings.arguments as String;
+          return AddTaskPage(userId: userId);
+        },
       },
     );
   }

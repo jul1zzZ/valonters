@@ -17,38 +17,56 @@ class TaskHomeScreen extends StatefulWidget {
 class _TaskHomeScreenState extends State<TaskHomeScreen> {
   LatLng? selectedLatLng;
 
-  Future<void> _takeTask(BuildContext context) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(widget.task.id)
-          .update({
-        'status': 'in_progress',
-        'assignedTo': FirebaseAuth.instance.currentUser!.uid,
-      });
-      showSuccess("Задание успешно взято в работу!");
-      if (!mounted) return;  // Защита после async
-      Navigator.pop(context);
-    } catch (e) {
-      showError("Ошибка при взятии задания: $e");
-    }
-  }
+ Future<void> _takeTask(BuildContext context) async {
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final docRef = FirebaseFirestore.instance.collection('tasks').doc(widget.task.id);
 
-  LatLng? _parseLocation(String? location) {
-    if (location == null) return null;
-    final parts = location.split(',');
-    if (parts.length != 2) return null;
-    final lat = double.tryParse(parts[0]);
-    final lng = double.tryParse(parts[1]);
-    if (lat == null || lng == null) return null;
-    return LatLng(lat, lng);
+  try {
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+
+      if (!snapshot.exists) {
+        throw Exception("Задание не найдено");
+      }
+
+      final data = snapshot.data()!;
+      final assignedList = List<String>.from(data['assignedToList'] ?? []);
+      final maxPeople = data['maxPeople'] ?? 200;
+
+      if (assignedList.contains(uid)) {
+        throw Exception("Вы уже участвуете в этом задании");
+      }
+
+      if (assignedList.length >= maxPeople) {
+        throw Exception("Мест больше нет");
+      }
+
+      assignedList.add(uid);
+
+      final newStatus = assignedList.length >= maxPeople ? 'done' : 'open';
+
+      transaction.update(docRef, {
+        'assignedToList': assignedList,
+        'status': newStatus,
+      });
+    });
+
+    showSuccess("Вы успешно записались на задание!");
+    if (!mounted) return;
+    Navigator.pop(context);
+  } catch (e) {
+    showError("Ошибка при записи: ${e.toString()}");
   }
+}
+
 
   @override
   void initState() {
     super.initState();
     final data = widget.task.data() as Map<String, dynamic>;
-    selectedLatLng = _parseLocation(data['location'] as String?);
+    if (data['lat'] != null && data['lng'] != null) {
+      selectedLatLng = LatLng(data['lat'], data['lng']);
+    }
   }
 
   @override
@@ -71,21 +89,18 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
             const SizedBox(height: 10),
             Text('📂 Категория: ${data['category'] ?? 'Не указано'}'),
             const SizedBox(height: 10),
+            Text('📍 Адрес (текст): ${data['location'] ?? 'Не указано'}'),
+            const SizedBox(height: 10),
             if (selectedLatLng != null) ...[
-              const Text('📍 Местоположение на карте:'),
+              const Text('🗺️ Местоположение на карте:'),
               const SizedBox(height: 8),
               SizedBox(
                 height: 200,
-                width: MediaQuery.of(context).size.width * 0.8,
+                width: MediaQuery.of(context).size.width * 0.9,
                 child: FlutterMap(
                   options: MapOptions(
                     initialCenter: selectedLatLng!,
                     initialZoom: 13,
-                    onTap: (tapPosition, latLng) {
-                      setState(() {
-                        selectedLatLng = latLng;
-                      });
-                    },
                   ),
                   children: [
                     TileLayer(
@@ -111,26 +126,25 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
                   ],
                 ),
               ),
-            ] else
-              const Text('📍 Местоположение: Не указано'),
+            ],
             const SizedBox(height: 10),
             Text(
               '🕒 Время проведения: ${data['eventTime'] != null ? (data['eventTime'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'Не указано'}',
             ),
             const SizedBox(height: 10),
-            Text('⏱ Примерная длительность: ${data['estimatedDuration'] ?? 'Не указано'}'),
+            Text('⏱ Примерная длительность: ${data['estimatedDuration'] ?? 'Не указано'} ч.'),
             const SizedBox(height: 10),
             Text('🧰 Необходимые сервисы: ${data['services'] ?? 'Не указано'}'),
             const SizedBox(height: 10),
+            Text('👥 Лимит участников: ${data['maxPeople'] ?? '-'}'),
+            const SizedBox(height: 10),
             Text('👤 Назначено: ${data['assignedTo'] ?? 'не назначено'}'),
             const SizedBox(height: 10),
-            Text(
-              '📅 Создано: ${data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : '-'}',
-            ),
+            Text('👥 Список участников: ${data['assignedToList'] != null ? (data['assignedToList'] as List).join(', ') : 'нет'}'),
             const SizedBox(height: 10),
-            Text(
-              '✅ Выполнено: ${data['completedAt'] != null ? (data['completedAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'ещё не завершено'}',
-            ),
+            Text('📅 Создано: ${data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : '-'}'),
+            const SizedBox(height: 10),
+            Text('✅ Выполнено: ${data['completedAt'] != null ? (data['completedAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'ещё не завершено'}'),
             const SizedBox(height: 10),
             Text('🔑 Создано пользователем: ${data['createdBy'] ?? '-'}'),
             const SizedBox(height: 24),

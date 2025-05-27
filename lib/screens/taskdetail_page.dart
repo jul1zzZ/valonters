@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
-import 'complete_taks_screen.dart';  // убедитесь, что путь правильный
+import 'complete_taks_screen.dart';
 
 class TaskDetailScreen extends StatelessWidget {
   final QueryDocumentSnapshot task;
@@ -16,7 +18,7 @@ class TaskDetailScreen extends StatelessWidget {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Задание помечено как выполненное!')),
+        const SnackBar(content: Text('Задание помечено как выполненное!')),
       );
 
       Navigator.of(context).pop();
@@ -41,11 +43,12 @@ class TaskDetailScreen extends StatelessWidget {
                 style: const TextStyle(fontSize: 16, color: Colors.black87),
                 children: [
                   TextSpan(
-                      text: "$label: ",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      )),
+                    text: "$label: ",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
                   TextSpan(text: value),
                 ],
               ),
@@ -59,6 +62,10 @@ class TaskDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = task.data() as Map<String, dynamic>;
+
+    final double? lat = double.tryParse(data['lat']?.toString() ?? '');
+    final double? lng = double.tryParse(data['lng']?.toString() ?? '');
+    final LatLng? point = (lat != null && lng != null) ? LatLng(lat, lng) : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Детали заявки')),
@@ -93,7 +100,7 @@ class TaskDetailScreen extends StatelessWidget {
 
             _buildInfoRow(Icons.description, "Описание", data['description'] ?? 'Нет описания'),
             _buildInfoRow(Icons.category, "Категория", data['category'] ?? 'Не указано'),
-            _buildInfoRow(Icons.location_on, "Местоположение", data['location'] ?? 'Не указано'),
+            _buildInfoRow(Icons.location_on, "Адрес", data['location'] ?? 'Не указано'),
             _buildInfoRow(
               Icons.access_time,
               "Время проведения",
@@ -103,6 +110,7 @@ class TaskDetailScreen extends StatelessWidget {
             ),
             _buildInfoRow(Icons.timer, "Примерная длительность", data['estimatedDuration'] ?? 'Не указано'),
             _buildInfoRow(Icons.build, "Необходимые сервисы", data['services'] ?? 'Не указано'),
+            _buildInfoRow(Icons.group, "Ограничение по людям", '${data['maxPeople'] ?? '-'}'),
             _buildInfoRow(Icons.person, "Назначено", data['assignedTo'] ?? 'не назначено'),
             _buildInfoRow(
               Icons.calendar_today,
@@ -120,7 +128,41 @@ class TaskDetailScreen extends StatelessWidget {
             ),
             _buildInfoRow(Icons.vpn_key, "Создано пользователем", data['createdBy'] ?? '-'),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
+
+            if (point != null) ...[
+              const SizedBox(height: 10),
+              const Text("Местоположение на карте:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 200,
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: point,
+                    initialZoom: 14,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c'],
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: point,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(Icons.location_pin, size: 40, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ] else ...[
+              const Text("Местоположение не указано", style: TextStyle(color: Colors.grey)),
+            ],
 
             if (data['status'] != 'completed')
               Center(

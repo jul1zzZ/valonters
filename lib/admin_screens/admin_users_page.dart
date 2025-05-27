@@ -65,6 +65,22 @@ class AdminUsersPage extends StatelessWidget {
     }
   }
 
+  void changeRole(String userId, String newRole, BuildContext context) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({'role': newRole});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Роль изменена на $newRole")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Ошибка при смене роли: $e")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,10 +115,27 @@ class AdminUsersPage extends StatelessWidget {
                       Text(user['name'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(user['email'], style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 8),
                       if (isBanned)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4),
-                          child: Text("Заблокирован", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                        const Text("Заблокирован", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                      if (!isBanned)
+                        Row(
+                          children: [
+                            const Text("Роль: ", style: TextStyle(fontWeight: FontWeight.bold)),
+                            DropdownButton<String>(
+                              value: role,
+                              onChanged: (newRole) {
+                                if (newRole != null) {
+                                  changeRole(user.id, newRole, context);
+                                }
+                              },
+                              items: const [
+                                DropdownMenuItem(value: 'admin', child: Text('Админ')),
+                                DropdownMenuItem(value: 'volunteer', child: Text('Волонтёр')),
+                                DropdownMenuItem(value: 'organizer', child: Text('Организатор')),
+                              ],
+                            ),
+                          ],
                         ),
                       const SizedBox(height: 12),
                       Row(

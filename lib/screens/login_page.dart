@@ -24,35 +24,36 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       final uid = authResult.user!.uid;
-
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
       String? role = userDoc.data()?['role'];
 
-      if (role == null) {
-        final guestDoc = await FirebaseFirestore.instance.collection('guests').doc(uid).get();
-        if (guestDoc.exists) {
-          role = 'guest';
-        }
-      }
-
       if (role == 'banned') {
         showError("Ваш аккаунт заблокирован. Обратитесь к администратору.");
-        FirebaseAuth.instance.signOut(); // на всякий случай выйти из аккаунта
+        await FirebaseAuth.instance.signOut(); 
         setState(() => _isLoading = false);
         return;
       }
 
+      if (role == null) {
+        showError("Ваша роль не определена. Обратитесь к администратору.");
+        await FirebaseAuth.instance.signOut(); 
+        setState(() => _isLoading = false);
+        return;
+      }
 
       showSuccess("Успешный вход!");
 
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (role == 'admin') {
-          Navigator.pushReplacementNamed(context, '/admin');
-        } else if (role == 'guest') {
-          Navigator.pushReplacementNamed(context, '/guestHome');
-        } else {
-          Navigator.pushReplacementNamed(context, '/home');
+        switch (role) {
+          case 'admin':
+            Navigator.pushReplacementNamed(context, '/admin');
+            break;
+          case 'organizer':
+            Navigator.pushReplacementNamed(context, '/organizerHome');
+            break;
+          default:
+            Navigator.pushReplacementNamed(context, '/home');
         }
       });
     } on FirebaseAuthException catch (e) {
@@ -131,20 +132,6 @@ class _LoginPageState extends State<LoginPage> {
             TextButton(
               onPressed: _isLoading ? null : () => Navigator.pushNamed(context, '/reset'),
               child: const Text("Забыли пароль?"),
-            ),
-            const SizedBox(height: 24),
-            Center(
-              child: TextButton(
-                onPressed: _isLoading ? null : () => Navigator.pushNamed(context, '/guestRequest'),
-                child: Text(
-                  "Оставить заявку",
-                  style: TextStyle(
-                    color: Colors.teal[700],
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
             ),
           ],
         ),

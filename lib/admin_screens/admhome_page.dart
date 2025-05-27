@@ -5,7 +5,7 @@ import 'admin_blocked_users_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'admin_guest_page.dart';
 import 'package:valonters/screens/login_page.dart';
-import 'admin_support_list_page.dart'; 
+import 'admin_support_list_page.dart';
 import 'package:valonters/admin_screens/admin_photo_review_page.dart';
 
 class AdminHomePage extends StatefulWidget {
@@ -19,21 +19,21 @@ class _AdminHomePageState extends State<AdminHomePage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
+    AdminPhotoReviewScreen(),            // Фотоотчёты — главная
     const AdminTasksPage(),
     const AdminUsersPage(),
     const AdminBlockedUsersPage(),
     const AdminGuestPage(),
     const AdminSupportListPage(),
-     AdminPhotoReviewScreen(),  // Страница проверки фотоотчетов
   ];
 
   final List<String> _titles = [
+    'Проверка фотоотчетов',
     'Заявки',
     'Пользователи',
     'Заблокированные',
     'Заявки гостей',
     'Поддержка',
-    'Проверка фотоотчетов',
   ];
 
   Future<void> _logout(BuildContext context) async {
@@ -47,7 +47,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -78,6 +78,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
+            icon: Icon(Icons.photo),
+            label: 'Фотоотчёты',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.assignment),
             label: 'Заявки',
           ),
@@ -96,10 +100,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.chat),
             label: 'Поддержка',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.photo),
-            label: 'Фотоотчёты',
           ),
         ],
       ),

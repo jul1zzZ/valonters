@@ -62,16 +62,47 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> takeTaskInProgress(String taskId) async {
-    try {
-      await FirebaseFirestore.instance.collection('tasks').doc(taskId).update({
-        'status': 'in_progress',
-        'assignedTo': FirebaseAuth.instance.currentUser!.uid,
+  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final docRef = FirebaseFirestore.instance.collection('tasks').doc(taskId);
+
+  try {
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+
+      if (!snapshot.exists) throw Exception("Заявка не найдена");
+
+      final data = snapshot.data()!;
+      final assignedList = List<String>.from(data['assignedToList'] ?? []);
+      final maxPeople = data['maxPeople'] ?? 200;
+
+      // Проверка: уже взята этим пользователем
+      if (assignedList.contains(uid)) {
+        throw Exception("Вы уже записаны на это задание");
+      }
+
+      // Проверка: свободные места
+      if (assignedList.length >= maxPeople) {
+        throw Exception("Мест больше нет");
+      }
+
+      // Добавляем текущего пользователя
+      assignedList.add(uid);
+
+      // Определяем новый статус
+      final newStatus = assignedList.length >= maxPeople ? 'done' : 'open';
+
+      transaction.update(docRef, {
+        'assignedToList': assignedList,
+        'status': newStatus,
       });
-      showSuccess("Задание успешно взято в работу!");
-    } on FirebaseException catch (e) {
-      showError(e.message ?? "Ошибка при взятии задания в работу");
-    }
+    });
+
+    showSuccess("Вы успешно записались на задание");
+  } catch (e) {
+    showError(e.toString());
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
