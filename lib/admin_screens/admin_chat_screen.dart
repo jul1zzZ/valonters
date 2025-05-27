@@ -12,6 +12,7 @@ class AdminChatScreen extends StatefulWidget {
 class _AdminChatScreenState extends State<AdminChatScreen> {
   final TextEditingController _controller = TextEditingController();
 
+  // Кеш для информации о пользователях (id → {name, avatarUrl})
   final Map<String, Map<String, String>> _userCache = {
     'admin': {
       'name': 'Администратор',
@@ -19,26 +20,28 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
     },
   };
 
-  Future<Map<String, String>> _getUserInfo(String userId) async {
-    if (_userCache.containsKey(userId)) return _userCache[userId]!;
+Future<Map<String, String>> _getUserInfo(String userId) async {
+  if (_userCache.containsKey(userId)) return _userCache[userId]!;
 
-    try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-      final data = userDoc.data();
-      final name = data?['name'] ?? 'Без имени';
-      final avatarUrl = data?['avatarUrl'] ?? '';
-      final Map<String, String> info = {
-        'name': name,
-        'avatarUrl': avatarUrl,
-      };
-      _userCache[userId] = info;
-      return info;
-    } catch (e) {
-      return {'name': 'Ошибка', 'avatarUrl': ''};
-    }
+  try {
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final data = userDoc.data();
+    final name = data?['name']?.toString() ?? 'Без имени';
+    final avatarUrl = data?['avatarUrl']?.toString() ?? '';
+    final Map<String, String> info = {
+      'name': name,
+      'avatarUrl': avatarUrl,
+    };
+    _userCache[userId] = info;
+    return info;
+  } catch (e) {
+    return {'name': 'Ошибка', 'avatarUrl': ''};
   }
+}
 
-  void sendMessage(String text) async {
+
+  Future<void> sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
     await FirebaseFirestore.instance
         .collection('chats')
         .doc(widget.chatId)
@@ -46,34 +49,32 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
         .add({
       'senderId': 'admin',
       'senderRole': 'admin',
-      'text': text,
+      'text': text.trim(),
       'timestamp': Timestamp.now(),
-      'isRead': true,  // админские сообщения сразу считаем прочитанными
+      'isRead': false, // сообщения от админа считаем сразу прочитанными
     });
     _controller.clear();
   }
 
-  /// Помечаем все входящие от пользователя непрочитанные сообщения как прочитанные
+  /// Помечаем все непрочитанные сообщения от пользователя как прочитанные админом
   Future<void> _markMessagesAsRead() async {
     final messagesRef = FirebaseFirestore.instance
         .collection('chats')
         .doc(widget.chatId)
         .collection('messages');
 
-    final unreadMessagesSnapshot = await messagesRef
+    final unreadSnapshot = await messagesRef
         .where('senderRole', isEqualTo: 'user')
-        .where('isRead', isEqualTo: false)
+        .where('isReadByAdmin', isEqualTo: false)
         .get();
 
+    if (unreadSnapshot.docs.isEmpty) return;
+
     final batch = FirebaseFirestore.instance.batch();
-
-    for (final doc in unreadMessagesSnapshot.docs) {
-      batch.update(doc.reference, {'isRead': true});
+    for (final doc in unreadSnapshot.docs) {
+      batch.update(doc.reference, {'isReadByAdmin': true});
     }
-
-    if (unreadMessagesSnapshot.docs.isNotEmpty) {
-      await batch.commit();
-    }
+    await batch.commit();
   }
 
   @override
@@ -105,7 +106,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                 }
                 final messages = snapshot.data!.docs;
 
-                // Помечаем непрочитанные сообщения как прочитанные при каждом обновлении списка
+                // Помечаем входящие сообщения как прочитанные
                 _markMessagesAsRead();
 
                 if (messages.isEmpty) {
@@ -123,8 +124,10 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
-                    final senderId = msg['senderId'];
-                    final isAdmin = msg['senderRole'] == 'admin';
+                    final senderId = msg['senderId'] as String;
+                    final senderRole = msg['senderRole'] as String;
+                    final isAdmin = senderRole == 'admin';
+                    final text = msg['text'] as String;
 
                     return FutureBuilder<Map<String, String>>(
                       future: _getUserInfo(senderId),
@@ -144,9 +147,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                                 if (!isAdmin)
                                   CircleAvatar(
                                     radius: 18,
-                                    backgroundImage: avatarUrl.isNotEmpty
-                                        ? NetworkImage(avatarUrl)
-                                        : null,
+                                    backgroundImage:
+                                        avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
                                     child: avatarUrl.isEmpty
                                         ? Icon(Icons.person, color: theme.colorScheme.onSurfaceVariant)
                                         : null,
@@ -189,7 +191,7 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                                           ],
                                         ),
                                         child: Text(
-                                          msg['text'],
+                                          text,
                                           style: theme.textTheme.bodyMedium,
                                         ),
                                       ),
@@ -242,7 +244,8 @@ class _AdminChatScreenState extends State<AdminChatScreen> {
                       ),
                       fillColor: theme.colorScheme.surfaceVariant,
                       filled: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                     minLines: 1,
                     maxLines: 5,

@@ -13,6 +13,35 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final Map<String, Map<String, dynamic>> _userCache = {}; // Кэш: userId → {name, photoUrl}
 
+  @override
+  void initState() {
+    super.initState();
+    _markAdminMessagesAsRead();
+  }
+
+  // Помечаем все непрочитанные сообщения от админа как прочитанные
+  Future<void> _markAdminMessagesAsRead() async {
+    final messagesRef = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.userId)
+        .collection('messages');
+
+    final unreadAdminMessages = await messagesRef
+        .where('senderRole', isEqualTo: 'admin')
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (final doc in unreadAdminMessages.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+
+    if (unreadAdminMessages.docs.isNotEmpty) {
+      await batch.commit();
+    }
+  }
+
   void sendMessage(String text) async {
     final chatDoc = FirebaseFirestore.instance.collection('chats').doc(widget.userId);
     await chatDoc.set({'userId': widget.userId, 'createdAt': Timestamp.now()}, SetOptions(merge: true));
@@ -21,6 +50,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       'senderRole': 'user',
       'text': text,
       'timestamp': Timestamp.now(),
+      'isReadByAdmin': false, // ← это поле для админа
+      'isRead': true, // для сообщений пользователя можно сразу ставить true, так как пользователь их видит
     });
     _controller.clear();
   }

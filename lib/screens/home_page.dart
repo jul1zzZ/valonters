@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:valonters/screens/faq_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +7,6 @@ import 'package:valonters/screens/login_page.dart';
 import '../utils/helpers.dart';
 import 'package:valonters/screens/taskhome_page.dart';
 import 'package:valonters/screens/support_chat_screen.dart';
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,40 +17,58 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  bool _hasUnreadMessages = false;
 
-  Future<void> addSampleTasks() async {
-    final firestore = FirebaseFirestore.instance;
-    final now = Timestamp.now();
-
-    final tasks = [
-      {"title": "Раздать еду бездомным", "description": "Помочь с раздачей горячей еды на вокзале."},
-      {"title": "Помощь пожилому соседу", "description": "Сходить в магазин и аптеку по списку."},
-      {"title": "Уборка в парке", "description": "Присоединиться к субботнику в Парке Победы."},
-      {"title": "Поддержка на мероприятии", "description": "Помочь с организацией благотворительного концерта."},
-      {"title": "Разнести листовки", "description": "Распространить листовки о сборе помощи по району."},
-      {"title": "Сбор одежды", "description": "Сортировать вещи для передачи нуждающимся."},
-      {"title": "Наставник школьника", "description": "Провести час с ребёнком из неблагополучной семьи."},
-      {"title": "Онлайн поддержка", "description": "Поговорить с пожилыми людьми по телефону."},
-      {"title": "Уборка территории приюта", "description": "Убрать двор и помещения приюта."},
-      {"title": "Помощь на кухне", "description": "Порезать овощи и помочь на кухне волонтёрского центра."},
-      {"title": "Организация игр", "description": "Провести игры для детей из детского дома."},
-      {"title": "Сопровождение на прогулке", "description": "Прогулка с инвалидами-колясочниками по скверу."},
-      {"title": "Проверка аптечек", "description": "Проверить и пополнить аптечки в общественных местах."},
-      {"title": "Фотограф на мероприятие", "description": "Сделать фотографии с праздника в Доме ветеранов."},
-      {"title": "Ремонт детской площадки", "description": "Покрасить качели и убрать мусор на детской площадке."},
-    ];
-
-    for (var task in tasks) {
-      await firestore.collection('tasks').add({
-        "title": task['title'],
-        "description": task['description'],
-        "status": "open",
-        "createdAt": now,
-      });
-    }
-
-    showSuccess("15 заданий успешно добавлены!");
+  @override
+  void initState() {
+    super.initState();
+    _listenUnreadMessages();
   }
+
+  void _listenUnreadMessages() {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    FirebaseFirestore.instance
+        .collection('chats')
+        .where('userId', isEqualTo: uid)
+        .snapshots()
+        .listen((chatSnapshot) {
+      if (chatSnapshot.docs.isEmpty) {
+        if (_hasUnreadMessages) {
+          setState(() {
+            _hasUnreadMessages = false;
+          });
+        }
+        return;
+      }
+
+      Future.wait(chatSnapshot.docs.map((chatDoc) {
+        return FirebaseFirestore.instance
+            .collection('chats')
+            .doc(chatDoc.id)
+            .collection('messages')
+            .where('isRead', isEqualTo: false)
+            .where('senderId', isEqualTo: 'admin')
+            .limit(1)
+            .get();
+      })).then((listOfQuerySnapshots) {
+        bool hasUnread = false;
+        for (var querySnap in listOfQuerySnapshots) {
+          if (querySnap.docs.isNotEmpty) {
+            hasUnread = true;
+            break;
+          }
+        }
+
+        if (_hasUnreadMessages != hasUnread) {
+          setState(() {
+            _hasUnreadMessages = hasUnread;
+          });
+        }
+      });
+    });
+  }
+
 
   Future<void> logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -62,53 +79,48 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> takeTaskInProgress(String taskId) async {
-  final uid = FirebaseAuth.instance.currentUser!.uid;
-  final docRef = FirebaseFirestore.instance.collection('tasks').doc(taskId);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final docRef = FirebaseFirestore.instance.collection('tasks').doc(taskId);
 
-  try {
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final snapshot = await transaction.get(docRef);
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snapshot = await transaction.get(docRef);
 
-      if (!snapshot.exists) throw Exception("Заявка не найдена");
+        if (!snapshot.exists) throw Exception("Заявка не найдена");
 
-      final data = snapshot.data()!;
-      final assignedList = List<String>.from(data['assignedToList'] ?? []);
-      final maxPeople = data['maxPeople'] ?? 200;
+        final data = snapshot.data()!;
+        final assignedList = List<String>.from(data['assignedToList'] ?? []);
+        final maxPeople = data['maxPeople'] ?? 200;
 
-      // Проверка: уже взята этим пользователем
-      if (assignedList.contains(uid)) {
-        throw Exception("Вы уже записаны на это задание");
-      }
+        if (assignedList.contains(uid)) {
+          throw Exception("Вы уже записаны на это задание");
+        }
 
-      // Проверка: свободные места
-      if (assignedList.length >= maxPeople) {
-        throw Exception("Мест больше нет");
-      }
+        if (assignedList.length >= maxPeople) {
+          throw Exception("Мест больше нет");
+        }
 
-      // Добавляем текущего пользователя
-      assignedList.add(uid);
+        assignedList.add(uid);
 
-      // Определяем новый статус
-      final newStatus = assignedList.length >= maxPeople ? 'done' : 'open';
+        final newStatus = assignedList.length >= maxPeople ? 'done' : 'open';
 
-      transaction.update(docRef, {
-        'assignedToList': assignedList,
-        'status': newStatus,
+        transaction.update(docRef, {
+          'assignedToList': assignedList,
+          'status': newStatus,
+        });
       });
-    });
 
-    showSuccess("Вы успешно записались на задание");
-  } catch (e) {
-    showError(e.toString());
+      showSuccess("Вы успешно записались на задание");
+    } catch (e) {
+      showError(e.toString());
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       TaskPage(onTakeTask: takeTaskInProgress),
-       ProfileScreen(),
+      ProfileScreen(),
       const FaqPage(),
       SupportChatScreen(userId: FirebaseAuth.instance.currentUser!.uid),
     ];
@@ -119,11 +131,6 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.blueAccent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: addSampleTasks,
-            tooltip: "Добавить задания",
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => logout(context),
@@ -142,11 +149,42 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Главная'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: 'Профиль'),
-          BottomNavigationBarItem(icon: Icon(Icons.help_outline), label: 'FAQ'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Чат'),
+        items: <BottomNavigationBarItem>[
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Главная'),
+          const BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: 'Профиль'),
+          const BottomNavigationBarItem(icon: Icon(Icons.help_outline), label: 'FAQ'),
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                const Icon(Icons.chat),
+                if (_hasUnreadMessages)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 10,
+                        minHeight: 10,
+                      ),
+                      child: const Text(
+                        '',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: 'Чат',
+          ),
         ],
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -231,5 +269,3 @@ class TaskPage extends StatelessWidget {
     );
   }
 }
-
-
