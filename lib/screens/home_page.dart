@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:valonters/screens/faq_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:valonters/screens/profile_page.dart'; 
-import 'package:valonters/screens/login_page.dart'; 
+import 'package:valonters/screens/profile_page.dart';
+import 'package:valonters/screens/login_page.dart';
 import '../utils/helpers.dart';
 import 'package:valonters/screens/taskhome_page.dart';
 import 'package:valonters/screens/support_chat_screen.dart';
@@ -33,42 +33,43 @@ class _HomePageState extends State<HomePage> {
         .where('userId', isEqualTo: uid)
         .snapshots()
         .listen((chatSnapshot) {
-      if (chatSnapshot.docs.isEmpty) {
-        if (_hasUnreadMessages) {
-          setState(() {
-            _hasUnreadMessages = false;
-          });
-        }
-        return;
-      }
-
-      Future.wait(chatSnapshot.docs.map((chatDoc) {
-        return FirebaseFirestore.instance
-            .collection('chats')
-            .doc(chatDoc.id)
-            .collection('messages')
-            .where('isRead', isEqualTo: false)
-            .where('senderId', isEqualTo: 'admin')
-            .limit(1)
-            .get();
-      })).then((listOfQuerySnapshots) {
-        bool hasUnread = false;
-        for (var querySnap in listOfQuerySnapshots) {
-          if (querySnap.docs.isNotEmpty) {
-            hasUnread = true;
-            break;
+          if (chatSnapshot.docs.isEmpty) {
+            if (_hasUnreadMessages) {
+              setState(() {
+                _hasUnreadMessages = false;
+              });
+            }
+            return;
           }
-        }
 
-        if (_hasUnreadMessages != hasUnread) {
-          setState(() {
-            _hasUnreadMessages = hasUnread;
+          Future.wait(
+            chatSnapshot.docs.map((chatDoc) {
+              return FirebaseFirestore.instance
+                  .collection('chats')
+                  .doc(chatDoc.id)
+                  .collection('messages')
+                  .where('isRead', isEqualTo: false)
+                  .where('senderId', isEqualTo: 'admin')
+                  .limit(1)
+                  .get();
+            }),
+          ).then((listOfQuerySnapshots) {
+            bool hasUnread = false;
+            for (var querySnap in listOfQuerySnapshots) {
+              if (querySnap.docs.isNotEmpty) {
+                hasUnread = true;
+                break;
+              }
+            }
+
+            if (_hasUnreadMessages != hasUnread) {
+              setState(() {
+                _hasUnreadMessages = hasUnread;
+              });
+            }
           });
-        }
-      });
-    });
+        });
   }
-
 
   Future<void> logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -118,7 +119,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> _pages = [
+    final List<Widget> pages = [
       TaskPage(onTakeTask: takeTaskInProgress),
       ProfileScreen(),
       const FaqPage(),
@@ -139,10 +140,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Container(
         color: Colors.grey.shade100,
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: _pages,
-        ),
+        child: IndexedStack(index: _selectedIndex, children: pages),
       ),
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.blue,
@@ -150,9 +148,18 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         items: <BottomNavigationBarItem>[
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Главная'),
-          const BottomNavigationBarItem(icon: Icon(Icons.account_circle), label: 'Профиль'),
-          const BottomNavigationBarItem(icon: Icon(Icons.help_outline), label: 'FAQ'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Главная',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle),
+            label: 'Профиль',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.help_outline),
+            label: 'FAQ',
+          ),
           BottomNavigationBarItem(
             icon: Stack(
               children: [
@@ -173,10 +180,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       child: const Text(
                         '',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 8),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -204,11 +208,12 @@ class TaskPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tasksStream = FirebaseFirestore.instance
-        .collection('tasks')
-        .where('status', isEqualTo: 'open')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+    final tasksStream =
+        FirebaseFirestore.instance
+            .collection('tasks')
+            .where('status', isEqualTo: 'open')
+            .orderBy('createdAt', descending: true)
+            .snapshots();
 
     return StreamBuilder<QuerySnapshot>(
       stream: tasksStream,
@@ -231,24 +236,70 @@ class TaskPage extends StatelessWidget {
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final task = tasks[index];
+            final data = task.data() as Map<String, dynamic>;
+
+            final location = data['location'] ?? 'Адрес не указан';
+            final startTime =
+                data['startTime'] != null
+                    ? (data['startTime'] as Timestamp).toDate()
+                    : null;
+            final duration = data['duration'];
+            final estimatedDuration = data['estimatedDuration'];
+
+            String formattedStartTime =
+                startTime != null
+                    ? "${startTime.day.toString().padLeft(2, '0')}.${startTime.month.toString().padLeft(2, '0')}.${startTime.year} в ${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}"
+                    : "Время не указано";
+
             return Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               margin: const EdgeInsets.symmetric(vertical: 8),
               elevation: 3,
               child: ListTile(
                 contentPadding: const EdgeInsets.all(16),
                 title: Text(
-                  task['title'],
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  data['title'] ?? 'Без названия',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(task['description']),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(data['description'] ?? ''),
+                      const SizedBox(height: 8),
+                      Text(
+                        "📍 Адрес: $location",
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                      Text(
+                        "🕒 Время: $formattedStartTime",
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                      if (duration != null)
+                        Text(
+                          "⏱ Длительность: $duration мин.",
+                          style: const TextStyle(color: Colors.black87),
+                        ),
+                      if (estimatedDuration != null)
+                        Text(
+                          "📌 Оценочная длительность: $estimatedDuration мин.",
+                          style: const TextStyle(color: Colors.black87),
+                        ),
+                    ],
+                  ),
                 ),
                 trailing: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text("Взять"),
                   onPressed: () => onTakeTask(task.id),

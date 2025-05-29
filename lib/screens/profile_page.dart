@@ -9,6 +9,8 @@ class ProfileScreen extends StatelessWidget {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  ProfileScreen({super.key});
+
   Future<Map<String, dynamic>> _getUserData() async {
     final user = _auth.currentUser;
     final userDoc = await _firestore.collection('users').doc(user?.uid).get();
@@ -16,12 +18,11 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Stream<QuerySnapshot> _getUserTasks() {
-  final user = _auth.currentUser;
-  return _firestore
-      .collection('tasks')
-      .where('assignedToList', arrayContains: user?.uid)
-      .snapshots();
-
+    final user = _auth.currentUser;
+    return _firestore
+        .collection('tasks')
+        .where('assignedToList', arrayContains: user?.uid)
+        .snapshots();
   }
 
   String translateStatus(String status) {
@@ -91,14 +92,12 @@ class ProfileScreen extends StatelessWidget {
     final user = _auth.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Профиль'),
-        backgroundColor: Colors.teal,
-      ),
+      appBar: AppBar(title: Text('Профиль'), backgroundColor: Colors.teal),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _getUserData(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData)
+            return Center(child: CircularProgressIndicator());
 
           final userData = snapshot.data!;
           return Padding(
@@ -111,26 +110,46 @@ class ProfileScreen extends StatelessWidget {
                   child: Icon(Icons.person, size: 50, color: Colors.white),
                 ),
                 SizedBox(height: 12),
-                Text(userData['name'] ?? '', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(
+                  userData['name'] ?? '',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
                 SizedBox(height: 4),
-                Text(user?.email ?? '', style: TextStyle(color: Colors.grey[700])),
+                Text(
+                  user?.email ?? '',
+                  style: TextStyle(color: Colors.grey[700]),
+                ),
                 SizedBox(height: 16),
                 Card(
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),
                     child: Column(
                       children: [
-                        _buildInfoRow(Icons.phone, 'Телефон', userData['phone'] ?? 'не указан'),
+                        _buildInfoRow(
+                          Icons.phone,
+                          'Телефон',
+                          userData['phone'] ?? 'не указан',
+                        ),
                         _buildInfoRow(
                           Icons.calendar_today,
                           'Дата регистрации',
                           userData['registrationDate'] != null
-                              ? (userData['registrationDate'] as Timestamp).toDate().toLocal().toString().split(' ')[0]
+                              ? (userData['registrationDate'] as Timestamp)
+                                  .toDate()
+                                  .toLocal()
+                                  .toString()
+                                  .split(' ')[0]
                               : 'не указана',
                         ),
-                        _buildInfoRow(Icons.badge, 'Роль', translateRole(userData['role'] ?? '')),
+                        _buildInfoRow(
+                          Icons.badge,
+                          'Роль',
+                          translateRole(userData['role'] ?? ''),
+                        ),
                       ],
                     ),
                   ),
@@ -140,24 +159,31 @@ class ProfileScreen extends StatelessWidget {
                   child: StreamBuilder<QuerySnapshot>(
                     stream: _getUserTasks(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                      if (!snapshot.hasData)
+                        return Center(child: CircularProgressIndicator());
 
                       final tasks = snapshot.data!.docs;
-                      final completedTasks = tasks.where((task) {
-                        final data = task.data() as Map<String, dynamic>?;
-                        return data != null && data['status'] == 'completed';
-                      }).toList();
+                      final completedTasks =
+                          tasks.where((task) {
+                            final data = task.data() as Map<String, dynamic>?;
+                            return data != null &&
+                                data['status'] == 'completed';
+                          }).toList();
 
-                      double totalWorkedHours = 0;
+                      double totalWorkedMinutes = 0;
+
                       for (var task in completedTasks) {
                         final data = task.data() as Map<String, dynamic>?;
-                        if (data != null && data.containsKey('estimatedDuration')) {
+                        if (data != null &&
+                            data.containsKey('estimatedDuration')) {
                           final duration = data['estimatedDuration'];
-                          if (duration is int) totalWorkedHours += duration.toDouble();
-                          else if (duration is double) totalWorkedHours += duration;
-                          else if (duration is String) {
+                          if (duration is int) {
+                            totalWorkedMinutes += duration.toDouble();
+                          } else if (duration is double) {
+                            totalWorkedMinutes += duration;
+                          } else if (duration is String) {
                             final parsed = double.tryParse(duration);
-                            if (parsed != null) totalWorkedHours += parsed;
+                            if (parsed != null) totalWorkedMinutes += parsed;
                           }
                         }
                       }
@@ -173,69 +199,110 @@ class ProfileScreen extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Выполнено заявок: ${completedTasks.length}', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            'Выполнено заявок: ${completedTasks.length}',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           Text('Всего заявок: ${tasks.length}'),
-                          Text('Отработано часов: ${totalWorkedHours.toStringAsFixed(1)}'),
+                          Text(
+                            'Отработано часов: ${totalWorkedMinutes.toStringAsFixed(1)}',
+                          ),
                           SizedBox(height: 10),
                           Expanded(
                             child: ListView.builder(
                               itemCount: sortedTasks.length,
                               itemBuilder: (context, index) {
                                 final task = sortedTasks[index];
-                                final data = task.data() as Map<String, dynamic>?;
+                                final data =
+                                    task.data() as Map<String, dynamic>?;
                                 final status = data?['status'] ?? '';
 
                                 return Card(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                   elevation: 3,
                                   margin: EdgeInsets.symmetric(vertical: 6),
                                   child: ListTile(
                                     contentPadding: EdgeInsets.all(12),
-                                    title: Text(data?['title'] ?? '', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    title: Text(
+                                      data?['title'] ?? '',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                     subtitle: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         SizedBox(height: 4),
-                                        Text(data?['description'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                                        Text(
+                                          data?['description'] ?? '',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                         SizedBox(height: 6),
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: getStatusColor(status),
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                           child: Text(
                                             translateStatus(status),
-                                            style: TextStyle(color: Colors.white, fontSize: 12),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    trailing: (status == 'active' || status == 'in_progress')
-                                        ? ElevatedButton(
-                                            onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) => CompleteTaskScreen(taskId: task.id),
+                                    trailing:
+                                        (status == 'active' ||
+                                                status == 'in_progress')
+                                            ? ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder:
+                                                        (_) =>
+                                                            CompleteTaskScreen(
+                                                              taskId: task.id,
+                                                            ),
+                                                  ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.teal,
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 6,
                                                 ),
-                                              );
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.teal,
-                                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
                                               ),
-                                            ),
-                                            child: Text('Завершить', style: TextStyle(fontSize: 12)),
-                                          )
-                                        : null,
+                                              child: Text(
+                                                'Завершить',
+                                                style: TextStyle(fontSize: 12),
+                                              ),
+                                            )
+                                            : null,
                                     onTap: () {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => TaskDetailScreen(task: task),
+                                          builder:
+                                              (_) =>
+                                                  TaskDetailScreen(task: task),
                                         ),
                                       );
                                     },
