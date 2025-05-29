@@ -13,7 +13,11 @@ class AdminSupportListPage extends StatefulWidget {
 class _AdminSupportListPageState extends State<AdminSupportListPage> {
   Future<String> _getUserEmail(String userId) async {
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
       return userDoc.data()?['email'] ?? 'Неизвестный';
     } catch (e) {
       return 'Ошибка';
@@ -28,16 +32,19 @@ class _AdminSupportListPageState extends State<AdminSupportListPage> {
         .where('senderRole', isEqualTo: 'user')
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.any((doc) => doc.data()['isReadByAdmin'] != true);
+          return snapshot.docs.any(
+            (doc) => doc.data()['isReadByAdmin'] != true,
+          );
         });
   }
 
   @override
   Widget build(BuildContext context) {
-    final chatsStream = FirebaseFirestore.instance
-        .collection('chats')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+    final chatsStream =
+        FirebaseFirestore.instance
+            .collection('chats')
+            .orderBy('createdAt', descending: true)
+            .snapshots();
 
     return Scaffold(
       appBar: AppBar(
@@ -48,13 +55,17 @@ class _AdminSupportListPageState extends State<AdminSupportListPage> {
       body: StreamBuilder<QuerySnapshot>(
         stream: chatsStream,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
 
           final chats = snapshot.data!.docs;
 
           if (chats.isEmpty) {
             return const Center(
-              child: Text('Нет активных чатов', style: TextStyle(fontSize: 16, color: Colors.grey)),
+              child: Text(
+                'Нет активных чатов',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
             );
           }
 
@@ -65,7 +76,9 @@ class _AdminSupportListPageState extends State<AdminSupportListPage> {
               final chat = chats[index];
               final userId = chat['userId'];
               final createdAt = chat['createdAt'].toDate();
-              final formattedDate = DateFormat('dd.MM.yyyy HH:mm').format(createdAt);
+              final formattedDate = DateFormat(
+                'dd.MM.yyyy HH:mm',
+              ).format(createdAt);
 
               return FutureBuilder<String>(
                 future: _getUserEmail(userId),
@@ -83,12 +96,21 @@ class _AdminSupportListPageState extends State<AdminSupportListPage> {
                       return Card(
                         elevation: 3,
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           leading: Stack(
                             children: [
-                              const Icon(Icons.chat, color: Colors.deepPurple, size: 28),
+                              const Icon(
+                                Icons.chat,
+                                color: Colors.deepPurple,
+                                size: 28,
+                              ),
                               if (hasUnread)
                                 Positioned(
                                   right: 0,
@@ -109,16 +131,20 @@ class _AdminSupportListPageState extends State<AdminSupportListPage> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text('Создан: $formattedDate'),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
                           onTap: () async {
                             // Переходим в чат
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => AdminChatScreen(chatId: chat.id),
+                                builder:
+                                    (_) => AdminChatScreen(chatId: chat.id),
                               ),
                             );
-                            // При возврате обновляем список, чтобы обновить статус уведомлений
                             setState(() {});
                           },
                         ),

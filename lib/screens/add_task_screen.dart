@@ -46,11 +46,13 @@ class _AddTaskPageState extends State<AddTaskPage> {
   }
 
   Future<void> pickEventDateTime() async {
+    final now = DateTime.now();
+
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
     );
     if (date == null) return;
 
@@ -60,8 +62,17 @@ class _AddTaskPageState extends State<AddTaskPage> {
     );
     if (time == null) return;
 
+    final selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+
+    if (selectedDateTime.isBefore(now)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Нельзя выбрать время в прошлом")),
+      );
+      return;
+    }
+
     setState(() {
-      eventTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      eventTime = selectedDateTime;
     });
   }
 
@@ -80,21 +91,25 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 onChanged: (v) => title = v,
                 validator: (v) => v!.isEmpty ? "Введите заголовок" : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: "Описание"),
                 onChanged: (v) => description = v,
                 validator: (v) => v!.isEmpty ? "Введите описание" : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: "Категория"),
                 onChanged: (v) => category = v,
                 validator: (v) => v!.isEmpty ? "Введите категорию" : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: "Местоположение (адрес)"),
                 onChanged: (v) => location = v,
                 validator: (v) => v!.isEmpty ? "Введите адрес" : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: "Макс. участников (1–200)"),
                 keyboardType: TextInputType.number,
@@ -105,17 +120,19 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: "Примерная длительность (напр. 2 часа)"),
                 onChanged: (v) => estimatedDuration = v,
                 validator: (v) => v!.isEmpty ? "Введите длительность" : null,
               ),
+              const SizedBox(height: 16),
               TextFormField(
                 decoration: const InputDecoration(labelText: "Необходимые сервисы (через запятую)"),
                 onChanged: (v) => services = v,
                 validator: (v) => v!.isEmpty ? "Введите сервисы" : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
@@ -132,8 +149,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               const Text("Выберите точку на карте"),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 200,
                 child: FlutterMap(
@@ -165,7 +183,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: saveTask,
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),

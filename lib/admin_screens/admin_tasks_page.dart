@@ -12,108 +12,113 @@ class AdminTasksPage extends StatefulWidget {
 }
 
 class _AdminTasksPageState extends State<AdminTasksPage> {
-  void addTaskDialog() {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final durationController = TextEditingController();
-    final servicesController = TextEditingController();
-    final photoUrlController = TextEditingController();
+  void editTaskDialog(DocumentSnapshot task) {
+    final titleController = TextEditingController(text: task['title']);
+    final descriptionController = TextEditingController(text: task['description']);
+    final categoryController = TextEditingController(text: task['category']);
+    final locationController = TextEditingController(text: task['location']);
+    final durationController = TextEditingController(text: task['estimatedDuration']);
+    final servicesController = TextEditingController(text: task['services']);
+    final maxPeopleController = TextEditingController(text: task['maxPeople'].toString());
 
-    DateTime? selectedDateTime;
-    LatLng? selectedLatLng;
+    DateTime selectedDateTime = (task['eventTime'] as Timestamp).toDate();
+    LatLng selectedLatLng = LatLng(task['lat'], task['lng']);
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text("Добавить заявку"),
+          title: const Text("Редактировать заявку"),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _styledTextField(titleController, "Название"),
                 _styledTextField(descriptionController, "Описание"),
+                _styledTextField(categoryController, "Категория"),
+                _styledTextField(locationController, "Адрес/локация"),
                 _styledTextField(durationController, "Длительность"),
                 _styledTextField(servicesController, "Сервисы"),
-                _styledTextField(photoUrlController, "URL фото"),
+                _styledTextField(maxPeopleController, "Макс. кол-во участников"),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     const Text("Дата и время: "),
                     TextButton(
                       onPressed: () async {
+                        final now = DateTime.now();
                         final date = await showDatePicker(
                           context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime.now(),
+                          initialDate: selectedDateTime.isBefore(now) ? now : selectedDateTime,
+                          firstDate: DateTime(now.year, now.month, now.day),
                           lastDate: DateTime(2100),
                         );
+
                         if (date != null) {
                           final time = await showTimePicker(
                             context: context,
-                            initialTime: TimeOfDay.now(),
+                            initialTime: TimeOfDay.fromDateTime(selectedDateTime),
                           );
                           if (time != null) {
-                            setState(() {
-                              selectedDateTime = DateTime(
-                                date.year,
-                                date.month,
-                                date.day,
-                                time.hour,
-                                time.minute,
+                            final chosenDateTime = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              time.hour,
+                              time.minute,
+                            );
+
+                            if (chosenDateTime.isBefore(now)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Нельзя выбрать время в прошлом')),
                               );
-                            });
+                            } else {
+                              setState(() {
+                                selectedDateTime = chosenDateTime;
+                              });
+                            }
                           }
                         }
                       },
                       child: Text(
-                        selectedDateTime == null
-                            ? "Выбрать"
-                            : DateFormat('dd.MM.yyyy HH:mm').format(selectedDateTime!),
+                        DateFormat('dd.MM.yyyy HH:mm').format(selectedDateTime),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text("Выберите точку на карте:"),
+                const Text("Координаты на карте:"),
                 const SizedBox(height: 10),
                 SizedBox(
                   height: 200,
                   width: MediaQuery.of(context).size.width * 0.8,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: FlutterMap(
-                      options: MapOptions(
-                        initialCenter: const LatLng(55.751244, 37.618423),
-                        initialZoom: 12,
-                        onTap: (tapPosition, latLng) {
-                          setState(() {
-                            selectedLatLng = latLng;
-                          });
-                        },
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          subdomains: const ['a', 'b', 'c'],
-                          userAgentPackageName: 'com.example.app',
-                        ),
-                        if (selectedLatLng != null)
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                point: selectedLatLng!,
-                                width: 40,
-                                height: 40,
-                                child: const Icon(Icons.location_pin,
-                                    size: 40, color: Colors.red),
-                              ),
-                            ],
-                          ),
-                      ],
+                  child: FlutterMap(
+                    options: MapOptions(
+                      initialCenter: selectedLatLng,
+                      initialZoom: 13,
+                      onTap: (tapPosition, latLng) {
+                        setState(() {
+                          selectedLatLng = latLng;
+                        });
+                      },
                     ),
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        subdomains: const ['a', 'b', 'c'],
+                        userAgentPackageName: 'com.example.app',
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: selectedLatLng,
+                            width: 40,
+                            height: 40,
+                            child: const Icon(Icons.location_pin, size: 40, color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -122,34 +127,26 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
           actions: [
             TextButton(
               onPressed: () async {
-                if (selectedLatLng == null || selectedDateTime == null || titleController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Пожалуйста, заполните все обязательные поля")),
-                  );
-                  return;
-                }
-
                 try {
-                  await FirebaseFirestore.instance.collection('tasks').add({
+                  await FirebaseFirestore.instance.collection('tasks').doc(task.id).update({
                     'title': titleController.text.trim(),
                     'description': descriptionController.text.trim(),
+                    'category': categoryController.text.trim(),
+                    'location': locationController.text.trim(),
                     'estimatedDuration': durationController.text.trim(),
                     'services': servicesController.text.trim(),
-                    'photoUrl': photoUrlController.text.trim(),
-                    'eventTime': Timestamp.fromDate(selectedDateTime!),
-                    'location': '${selectedLatLng!.latitude},${selectedLatLng!.longitude}',
-                    'status': 'open',
-                    'createdAt': Timestamp.now(),
+                    'maxPeople': int.tryParse(maxPeopleController.text.trim()) ?? 1,
+                    'eventTime': Timestamp.fromDate(selectedDateTime),
+                    'lat': selectedLatLng.latitude,
+                    'lng': selectedLatLng.longitude,
                   });
-
                   Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Заявка обновлена')));
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Ошибка: $e")),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Ошибка: $e")));
                 }
               },
-              child: const Text("Добавить"),
+              child: const Text("Сохранить"),
             ),
           ],
         ),
@@ -174,9 +171,7 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
 
   void deleteTask(String taskId) async {
     await FirebaseFirestore.instance.collection('tasks').doc(taskId).delete();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Заявка удалена")),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Заявка удалена")));
   }
 
   @override
@@ -186,18 +181,9 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
         title: const Text("Управление заявками"),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: addTaskDialog,
-          ),
-        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('tasks')
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('tasks').orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
@@ -205,8 +191,8 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
           if (tasks.isEmpty) return const Center(child: Text("Заявок нет"));
 
           return ListView.builder(
-            padding: const EdgeInsets.all(12),
             itemCount: tasks.length,
+            padding: const EdgeInsets.all(12),
             itemBuilder: (context, index) {
               final task = tasks[index];
               final createdAt = (task['createdAt'] as Timestamp).toDate();
@@ -216,18 +202,51 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 4,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  title: Text(
-                    task['title'],
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+                child: ExpansionTile(
+                  title: Text(task['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('${task['description']}\nСоздано: $formattedDate'),
-                  isThreeLine: true,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => deleteTask(task.id),
-                  ),
+                  childrenPadding: const EdgeInsets.all(12),
+                  children: [
+                    Text('Категория: ${task['category']}'),
+                    Text('Адрес: ${task['location']}'),
+                    Text('Длительность: ${task['estimatedDuration']}'),
+                    Text('Сервисы: ${task['services']}'),
+                    Text('Макс. участников: ${task['maxPeople']}'),
+                    Text('Дата и время: ${DateFormat('dd.MM.yyyy HH:mm').format((task['eventTime'] as Timestamp).toDate())}'),
+                    const SizedBox(height: 8),
+                    FutureBuilder<List<DocumentSnapshot>>(
+                      future: _getAssignedUsers(task['assignedToList'] ?? []),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const CircularProgressIndicator();
+                        } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Волонтёры:'),
+                              ...snapshot.data!.map((user) => Text('- ${user['name']} (${user['email']})')),
+                            ],
+                          );
+                        } else {
+                          return const Text('Волонтёров нет');
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => editTaskDialog(task),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => deleteTask(task.id),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               );
             },
@@ -235,5 +254,14 @@ class _AdminTasksPageState extends State<AdminTasksPage> {
         },
       ),
     );
+  }
+
+  Future<List<DocumentSnapshot>> _getAssignedUsers(List<dynamic> ids) async {
+    if (ids.isEmpty) return [];
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where(FieldPath.documentId, whereIn: ids)
+        .get();
+    return snapshot.docs;
   }
 }

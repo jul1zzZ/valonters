@@ -16,11 +16,12 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Stream<QuerySnapshot> _getUserTasks() {
-    final user = _auth.currentUser;
-    return _firestore
-        .collection('tasks')
-        .where('assignedTo', isEqualTo: user?.uid)
-        .snapshots();
+  final user = _auth.currentUser;
+  return _firestore
+      .collection('tasks')
+      .where('assignedToList', arrayContains: user?.uid)
+      .snapshots();
+
   }
 
   String translateStatus(String status) {

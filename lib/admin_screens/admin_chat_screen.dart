@@ -12,7 +12,6 @@ class AdminChatScreen extends StatefulWidget {
 class _AdminChatScreenState extends State<AdminChatScreen> {
   final TextEditingController _controller = TextEditingController();
 
-  // Кеш для информации о пользователях (id → {name, avatarUrl})
   final Map<String, Map<String, String>> _userCache = {
     'admin': {
       'name': 'Администратор',
@@ -51,7 +50,7 @@ Future<Map<String, String>> _getUserInfo(String userId) async {
       'senderRole': 'admin',
       'text': text.trim(),
       'timestamp': Timestamp.now(),
-      'isRead': false, // сообщения от админа считаем сразу прочитанными
+      'isRead': false, 
     });
     _controller.clear();
   }
