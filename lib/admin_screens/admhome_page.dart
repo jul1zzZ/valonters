@@ -3,7 +3,6 @@ import 'admin_tasks_page.dart';
 import 'admin_users_page.dart';
 import 'admin_blocked_users_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'admin_guest_page.dart';
 import 'package:valonters/screens/login_page.dart';
 import 'admin_support_list_page.dart';
 import 'package:valonters/admin_screens/admin_photo_review_page.dart';
@@ -19,11 +18,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    AdminPhotoReviewScreen(),            // Фотоотчёты — главная
+    AdminPhotoReviewScreen(), // Фотоотчёты — главная
     const AdminTasksPage(),
     const AdminUsersPage(),
     const AdminBlockedUsersPage(),
-    const AdminGuestPage(),
     const AdminSupportListPage(),
   ];
 
@@ -32,7 +30,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
     'Заявки',
     'Пользователи',
     'Заблокированные',
-    'Заявки гостей',
     'Поддержка',
   ];
 
@@ -77,10 +74,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
         unselectedItemColor: theme.disabledColor,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.photo),
-            label: 'Фотоотчёты',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.photo), label: 'Фотоотчёты'),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment),
             label: 'Заявки',
@@ -89,18 +83,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
             icon: Icon(Icons.people),
             label: 'Пользователи',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.block),
-            label: 'Баны',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Гости',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Поддержка',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.block), label: 'Баны'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Поддержка'),
         ],
       ),
     );

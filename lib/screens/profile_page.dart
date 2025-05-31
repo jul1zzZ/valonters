@@ -162,7 +162,12 @@ class ProfileScreen extends StatelessWidget {
                       if (!snapshot.hasData)
                         return Center(child: CircularProgressIndicator());
 
-                      final tasks = snapshot.data!.docs;
+                      final tasks =
+                          snapshot.data!.docs.where((task) {
+                            final data = task.data() as Map<String, dynamic>?;
+                            return data != null && data['status'] != 'expired';
+                          }).toList();
+
                       final completedTasks =
                           tasks.where((task) {
                             final data = task.data() as Map<String, dynamic>?;

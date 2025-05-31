@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:valonters/screens/faq_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:valonters/screens/profile_page.dart';
+import 'package:valonters/screens/faq_page.dart';
 import 'package:valonters/screens/login_page.dart';
-import '../utils/helpers.dart';
-import 'package:valonters/screens/taskhome_page.dart';
+import 'package:valonters/screens/profile_page.dart';
 import 'package:valonters/screens/support_chat_screen.dart';
+import 'package:valonters/screens/taskhome_page.dart';
+import '../utils/helpers.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,6 +23,29 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _listenUnreadMessages();
+    _expireOldTasks();
+  }
+
+  void _expireOldTasks() async {
+    final now = DateTime.now();
+
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('tasks')
+            .where('status', isEqualTo: 'open')
+            .get();
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final eventTime = (data['eventTime'] as Timestamp?)?.toDate();
+
+      if (eventTime != null) {
+        final difference = now.difference(eventTime);
+        if (difference.inHours > 24) {
+          await doc.reference.update({'status': 'expired'});
+        }
+      }
+    }
   }
 
   void _listenUnreadMessages() {
@@ -103,7 +126,8 @@ class _HomePageState extends State<HomePage> {
 
         assignedList.add(uid);
 
-        final newStatus = assignedList.length >= maxPeople ? 'done' : 'open';
+        final newStatus =
+            assignedList.length >= maxPeople ? 'done' : 'in_progress';
 
         transaction.update(docRef, {
           'assignedToList': assignedList,
@@ -147,7 +171,7 @@ class _HomePageState extends State<HomePage> {
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
-        items: <BottomNavigationBarItem>[
+        items: [
           const BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Главная',
@@ -169,19 +193,11 @@ class _HomePageState extends State<HomePage> {
                     right: 0,
                     top: 0,
                     child: Container(
-                      padding: const EdgeInsets.all(3),
+                      width: 10,
+                      height: 10,
                       decoration: const BoxDecoration(
                         color: Colors.red,
                         shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 10,
-                        minHeight: 10,
-                      ),
-                      child: const Text(
-                        '',
-                        style: TextStyle(color: Colors.white, fontSize: 8),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -211,7 +227,7 @@ class TaskPage extends StatelessWidget {
     final tasksStream =
         FirebaseFirestore.instance
             .collection('tasks')
-            .where('status', isEqualTo: 'open')
+            .where('status', whereIn: ['open', 'in_progress'])
             .orderBy('createdAt', descending: true)
             .snapshots();
 
@@ -225,10 +241,25 @@ class TaskPage extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final tasks = snapshot.data!.docs;
+        final now = DateTime.now();
+        final tasks =
+            snapshot.data!.docs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              if (data['eventTime'] != null) {
+                final startTime = (data['eventTime'] as Timestamp).toDate();
+                if (startTime.isBefore(now)) {
+                  if (data['status'] == 'open') {
+                    final difference = now.difference(startTime);
+                    return difference.inHours < 24;
+                  }
+                  return false;
+                }
+              }
+              return true;
+            }).toList();
 
         if (tasks.isEmpty) {
-          return const Center(child: Text("Пока нет открытых заданий"));
+          return const Center(child: Text("Нет актуальных заданий"));
         }
 
         return ListView.builder(
@@ -240,8 +271,8 @@ class TaskPage extends StatelessWidget {
 
             final location = data['location'] ?? 'Адрес не указан';
             final startTime =
-                data['startTime'] != null
-                    ? (data['startTime'] as Timestamp).toDate()
+                data['eventTime'] != null
+                    ? (data['eventTime'] as Timestamp).toDate()
                     : null;
             final duration = data['duration'];
             final estimatedDuration = data['estimatedDuration'];
@@ -273,23 +304,13 @@ class TaskPage extends StatelessWidget {
                     children: [
                       Text(data['description'] ?? ''),
                       const SizedBox(height: 8),
-                      Text(
-                        "📍 Адрес: $location",
-                        style: const TextStyle(color: Colors.black87),
-                      ),
-                      Text(
-                        "🕒 Время: $formattedStartTime",
-                        style: const TextStyle(color: Colors.black87),
-                      ),
+                      Text("📍 Адрес: $location"),
+                      Text("🕒 Время: $formattedStartTime"),
                       if (duration != null)
-                        Text(
-                          "⏱ Длительность: $duration мин.",
-                          style: const TextStyle(color: Colors.black87),
-                        ),
+                        Text("⏱ Длительность: $duration мин."),
                       if (estimatedDuration != null)
                         Text(
                           "📌 Оценочная длительность: $estimatedDuration мин.",
-                          style: const TextStyle(color: Colors.black87),
                         ),
                     ],
                   ),
