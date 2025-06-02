@@ -296,7 +296,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       return;
                     }
 
-                    // Переход на экран завершения задания
                     Navigator.push(
                       context,
                       MaterialPageRoute(
