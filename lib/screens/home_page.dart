@@ -102,8 +102,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<bool> canTakeNewTask(String userId) async {
+    final querySnapshot =
+        await FirebaseFirestore.instance
+            .collection('tasks')
+            .where('assignedToList', arrayContains: userId)
+            .where('status', whereIn: ['open', 'in_progress'])
+            .get();
+
+    return querySnapshot.docs.isEmpty;
+  }
+
   Future<void> takeTaskInProgress(String taskId) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    // 👉 Добавляем проверку
+    final canTake = await canTakeNewTask(uid);
+    if (!canTake) {
+      showError("Вы не можете взять новую заявку, пока не завершите текущую");
+      return;
+    }
+
     final docRef = FirebaseFirestore.instance.collection('tasks').doc(taskId);
 
     try {
@@ -307,10 +326,10 @@ class TaskPage extends StatelessWidget {
                       Text("📍 Адрес: $location"),
                       Text("🕒 Время: $formattedStartTime"),
                       if (duration != null)
-                        Text("⏱ Длительность: $duration мин."),
+                        Text("⏱ Длительность: $duration ч."),
                       if (estimatedDuration != null)
                         Text(
-                          "📌 Оценочная длительность: $estimatedDuration мин.",
+                          "📌 Оценочная длительность: $estimatedDuration ч.",
                         ),
                     ],
                   ),

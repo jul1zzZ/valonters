@@ -11,7 +11,7 @@ class SupportChatScreen extends StatefulWidget {
 
 class _SupportChatScreenState extends State<SupportChatScreen> {
   final TextEditingController _controller = TextEditingController();
-  final Map<String, Map<String, dynamic>> _userCache = {}; // Кэш: userId → {name, photoUrl}
+  final Map<String, Map<String, dynamic>> _userCache = {};
 
   @override
   void initState() {
@@ -19,17 +19,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     _markAdminMessagesAsRead();
   }
 
-  // Помечаем все непрочитанные сообщения от админа как прочитанные
   Future<void> _markAdminMessagesAsRead() async {
     final messagesRef = FirebaseFirestore.instance
         .collection('chats')
         .doc(widget.userId)
         .collection('messages');
 
-    final unreadAdminMessages = await messagesRef
-        .where('senderRole', isEqualTo: 'admin')
-        .where('isRead', isEqualTo: false)
-        .get();
+    final unreadAdminMessages =
+        await messagesRef
+            .where('senderRole', isEqualTo: 'admin')
+            .where('isRead', isEqualTo: false)
+            .get();
 
     final batch = FirebaseFirestore.instance.batch();
 
@@ -43,15 +43,20 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   }
 
   void sendMessage(String text) async {
-    final chatDoc = FirebaseFirestore.instance.collection('chats').doc(widget.userId);
-    await chatDoc.set({'userId': widget.userId, 'createdAt': Timestamp.now()}, SetOptions(merge: true));
+    final chatDoc = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.userId);
+    await chatDoc.set({
+      'userId': widget.userId,
+      'createdAt': Timestamp.now(),
+    }, SetOptions(merge: true));
     await chatDoc.collection('messages').add({
       'senderId': widget.userId,
       'senderRole': 'user',
       'text': text,
       'timestamp': Timestamp.now(),
-      'isReadByAdmin': false, // ← это поле для админа
-      'isRead': true, // для сообщений пользователя можно сразу ставить true, так как пользователь их видит
+      'isReadByAdmin': false,
+      'isRead': true,
     });
     _controller.clear();
   }
@@ -61,8 +66,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       return _userCache[userId]!;
     }
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    final data = doc.data() ?? {'name': 'Неизвестный', 'photoUrl': null};
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final data = doc.data() ?? {'name': 'Администратор', 'photoUrl': null};
 
     _userCache[userId] = data;
     return data;
@@ -70,12 +76,13 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messagesStream = FirebaseFirestore.instance
-        .collection('chats')
-        .doc(widget.userId)
-        .collection('messages')
-        .orderBy('timestamp', descending: true)
-        .snapshots();
+    final messagesStream =
+        FirebaseFirestore.instance
+            .collection('chats')
+            .doc(widget.userId)
+            .collection('messages')
+            .orderBy('timestamp', descending: true)
+            .snapshots();
 
     return Scaffold(
       appBar: AppBar(
@@ -89,7 +96,8 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: messagesStream,
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final messages = snapshot.data!.docs;
 
                 if (messages.isEmpty) {
@@ -103,7 +111,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
                 return ListView.builder(
                   reverse: true,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 8,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
@@ -122,21 +133,31 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                         final photoUrl = user['photoUrl'];
 
                         return Align(
-                          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                          alignment:
+                              isUser
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
                           child: Container(
                             margin: const EdgeInsets.symmetric(vertical: 5),
                             constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width * 0.75,
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75,
                             ),
                             child: Row(
-                              mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                              mainAxisAlignment:
+                                  isUser
+                                      ? MainAxisAlignment.end
+                                      : MainAxisAlignment.start,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (!isUser) _buildAvatar(photoUrl, userName),
                                 const SizedBox(width: 8),
                                 Flexible(
                                   child: Column(
-                                    crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        isUser
+                                            ? CrossAxisAlignment.end
+                                            : CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         userName,
@@ -148,18 +169,30 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 10,
+                                          horizontal: 14,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: isUser ? Colors.teal.shade100 : Colors.grey.shade300,
+                                          color:
+                                              isUser
+                                                  ? Colors.teal.shade100
+                                                  : Colors.grey.shade300,
                                           borderRadius: BorderRadius.only(
                                             topLeft: const Radius.circular(12),
                                             topRight: const Radius.circular(12),
-                                            bottomLeft: Radius.circular(isUser ? 12 : 0),
-                                            bottomRight: Radius.circular(isUser ? 0 : 12),
+                                            bottomLeft: Radius.circular(
+                                              isUser ? 12 : 0,
+                                            ),
+                                            bottomRight: Radius.circular(
+                                              isUser ? 0 : 12,
+                                            ),
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.05),
+                                              color: Colors.black.withOpacity(
+                                                0.05,
+                                              ),
                                               offset: const Offset(1, 1),
                                               blurRadius: 2,
                                             ),
@@ -211,7 +244,10 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                         hintText: 'Напишите сообщение...',
                         filled: true,
                         fillColor: Colors.grey.shade100,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 16,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
                           borderSide: BorderSide.none,
@@ -244,17 +280,17 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
 
   Widget _buildAvatar(String? photoUrl, String name) {
     if (photoUrl != null && photoUrl.isNotEmpty) {
-      return CircleAvatar(
-        radius: 18,
-        backgroundImage: NetworkImage(photoUrl),
-      );
+      return CircleAvatar(radius: 18, backgroundImage: NetworkImage(photoUrl));
     } else {
       return CircleAvatar(
         radius: 18,
         backgroundColor: Colors.teal.shade300,
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : "?",
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       );
     }

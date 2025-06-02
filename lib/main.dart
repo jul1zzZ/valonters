@@ -9,6 +9,7 @@ import 'admin_screens/admhome_page.dart';
 import 'screens/guest_request_page.dart';
 import 'screens/add_task_screen.dart';
 import 'screens/organizer_home_screen.dart';
+import 'screens/organizer_task_details.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,8 +22,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseTheme = ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal);
-    
+    final baseTheme = ThemeData(
+      useMaterial3: true,
+      colorSchemeSeed: Colors.teal,
+    );
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'VolunteerHelp',
@@ -43,9 +47,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(color: Colors.teal[700]!, width: 2),
             borderRadius: BorderRadius.circular(8),
@@ -57,13 +59,17 @@ class MyApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 2,
           centerTitle: true,
-          titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          titleTextStyle: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         scaffoldBackgroundColor: Colors.grey[50],
       ),
-      home: FirebaseAuth.instance.currentUser == null
-          ? const LoginPage()
-          : const HomePage(),
+      home:
+          FirebaseAuth.instance.currentUser == null
+              ? const LoginPage()
+              : const HomePage(),
       routes: {
         '/register': (context) => const RegisterPage(),
         '/reset': (context) => ResetPasswordPage(),
@@ -71,10 +77,19 @@ class MyApp extends StatelessWidget {
         '/admin': (context) => const AdminHomePage(),
         '/login': (context) => LoginPage(),
         '/guestRequest': (context) => const GuestRequestPage(),
-        '/organizerHome': (context) => OrganizerHomePage(userId: FirebaseAuth.instance.currentUser!.uid),
+        '/organizerHome':
+            (context) => OrganizerHomePage(
+              userId: FirebaseAuth.instance.currentUser!.uid,
+            ),
         '/addTask': (context) {
           final userId = ModalRoute.of(context)!.settings.arguments as String;
           return AddTaskPage(userId: userId);
+        },
+        '/taskDetail': (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+          return OrganizerTaskDetailsPage(taskData: args);
         },
       },
     );

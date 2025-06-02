@@ -8,7 +8,7 @@ import '../utils/helpers.dart';
 class TaskHomeScreen extends StatefulWidget {
   final DocumentSnapshot task;
 
-  const TaskHomeScreen({Key? key, required this.task}) : super(key: key);
+  const TaskHomeScreen({super.key, required this.task});
 
   @override
   State<TaskHomeScreen> createState() => _TaskHomeScreenState();
@@ -17,48 +17,64 @@ class TaskHomeScreen extends StatefulWidget {
 class _TaskHomeScreenState extends State<TaskHomeScreen> {
   LatLng? selectedLatLng;
 
- Future<void> _takeTask(BuildContext context) async {
-  final uid = FirebaseAuth.instance.currentUser!.uid;
-  final docRef = FirebaseFirestore.instance.collection('tasks').doc(widget.task.id);
+  Future<void> _takeTask(BuildContext context) async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final docRef = FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.task.id);
 
-  try {
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final snapshot = await transaction.get(docRef);
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snapshot = await transaction.get(docRef);
 
-      if (!snapshot.exists) {
-        throw Exception("Задание не найдено");
-      }
+        if (!snapshot.exists) {
+          throw Exception("Задание не найдено");
+        }
 
-      final data = snapshot.data()!;
-      final assignedList = List<String>.from(data['assignedToList'] ?? []);
-      final maxPeople = data['maxPeople'] ?? 200;
+        // 🔍 Дополнительная проверка количества активных заданий
+        final activeTasksQuery =
+            await FirebaseFirestore.instance
+                .collection('tasks')
+                .where('assignedToList', arrayContains: uid)
+                .where('status', whereIn: ['open', 'in_progress'])
+                .get();
 
-      if (assignedList.contains(uid)) {
-        throw Exception("Вы уже участвуете в этом задании");
-      }
+        if (activeTasksQuery.docs.isNotEmpty) {
+          throw Exception(
+            "Нельзя участвовать более чем в одном активном задании",
+          );
+        }
 
-      if (assignedList.length >= maxPeople) {
-        throw Exception("Мест больше нет");
-      }
+        final data = snapshot.data()!;
+        final assignedList = List<String>.from(data['assignedToList'] ?? []);
+        final maxPeople = data['maxPeople'] ?? 200;
 
-      assignedList.add(uid);
+        if (assignedList.contains(uid)) {
+          throw Exception("Вы уже участвуете в этом задании");
+        }
 
-      final newStatus = assignedList.length >= maxPeople ? 'done' : 'open';
+        if (assignedList.length >= maxPeople) {
+          throw Exception("Мест больше нет");
+        }
 
-      transaction.update(docRef, {
-        'assignedToList': assignedList,
-        'status': newStatus,
+        assignedList.add(uid);
+
+        // Статус становится in_progress при первом присоединении
+        final newStatus = 'in_progress';
+
+        transaction.update(docRef, {
+          'assignedToList': assignedList,
+          'status': newStatus,
+        });
       });
-    });
 
-    showSuccess("Вы успешно записались на задание!");
-    if (!mounted) return;
-    Navigator.pop(context);
-  } catch (e) {
-    showError("Ошибка при записи: ${e.toString()}");
+      showSuccess("Вы успешно записались на задание!");
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      showError("Ошибка при записи: ${e.toString()}");
+    }
   }
-}
-
 
   @override
   void initState() {
@@ -72,6 +88,14 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final data = widget.task.data() as Map<String, dynamic>;
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final assignedList = List<String>.from(data['assignedToList'] ?? []);
+    final maxPeople = data['maxPeople'] ?? 200;
+
+    final canTakeTask =
+        (data['status'] == 'open' || data['status'] == 'in_progress') &&
+        !assignedList.contains(currentUid) &&
+        assignedList.length < maxPeople;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Детали задания')),
@@ -132,7 +156,9 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
               '🕒 Время проведения: ${data['eventTime'] != null ? (data['eventTime'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'Не указано'}',
             ),
             const SizedBox(height: 10),
-            Text('⏱ Примерная длительность: ${data['estimatedDuration'] ?? 'Не указано'} ч.'),
+            Text(
+              '⏱ Примерная длительность: ${(data['estimatedDuration'] is num) ? '${data['estimatedDuration']} ч.' : 'Не указано'}',
+            ),
             const SizedBox(height: 10),
             Text('🧰 Необходимые сервисы: ${data['services'] ?? 'Не указано'}'),
             const SizedBox(height: 10),
@@ -140,16 +166,22 @@ class _TaskHomeScreenState extends State<TaskHomeScreen> {
             const SizedBox(height: 10),
             Text('👤 Назначено: ${data['assignedTo'] ?? 'не назначено'}'),
             const SizedBox(height: 10),
-            Text('👥 Список участников: ${data['assignedToList'] != null ? (data['assignedToList'] as List).join(', ') : 'нет'}'),
+            Text(
+              '👥 Список участников: ${assignedList.isNotEmpty ? assignedList.join(', ') : 'нет'}',
+            ),
             const SizedBox(height: 10),
-            Text('📅 Создано: ${data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : '-'}'),
+            Text(
+              '📅 Создано: ${data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : '-'}',
+            ),
             const SizedBox(height: 10),
-            Text('✅ Выполнено: ${data['completedAt'] != null ? (data['completedAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'ещё не завершено'}'),
+            Text(
+              '✅ Выполнено: ${data['completedAt'] != null ? (data['completedAt'] as Timestamp).toDate().toLocal().toString().split('.')[0] : 'ещё не завершено'}',
+            ),
             const SizedBox(height: 10),
             Text('🔑 Создано пользователем: ${data['createdBy'] ?? '-'}'),
             const SizedBox(height: 24),
             const Spacer(),
-            if (data['status'] == 'open')
+            if (canTakeTask)
               Center(
                 child: ElevatedButton(
                   onPressed: () => _takeTask(context),

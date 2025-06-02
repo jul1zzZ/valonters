@@ -273,6 +273,43 @@ class ProfileScreen extends StatelessWidget {
                                                 status == 'in_progress')
                                             ? ElevatedButton(
                                               onPressed: () {
+                                                final Timestamp?
+                                                eventTimestamp =
+                                                    data?['eventTime']
+                                                        as Timestamp?;
+                                                if (eventTimestamp == null) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Время начала мероприятия не указано',
+                                                      ),
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
+                                                final DateTime eventTime =
+                                                    eventTimestamp
+                                                        .toDate()
+                                                        .toLocal();
+                                                final DateTime now =
+                                                    DateTime.now();
+
+                                                if (now.isBefore(eventTime)) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Задание ещё не началось. Вы сможете завершить его после ${eventTime.toString().substring(0, 16)}',
+                                                      ),
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(

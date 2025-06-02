@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:valonters/screens/login_page.dart';
 import 'admin_support_list_page.dart';
 import 'package:valonters/admin_screens/admin_photo_review_page.dart';
+import 'stats_screen.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -23,6 +24,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     const AdminUsersPage(),
     const AdminBlockedUsersPage(),
     const AdminSupportListPage(),
+    VolunteerStatsScreen(), // Добавили статистику волонтеров
   ];
 
   final List<String> _titles = [
@@ -31,6 +33,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     'Пользователи',
     'Заблокированные',
     'Поддержка',
+    'Статистика волонтеров', // Заголовок для новой страницы
   ];
 
   Future<void> _logout(BuildContext context) async {
@@ -85,6 +88,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
           ),
           BottomNavigationBarItem(icon: Icon(Icons.block), label: 'Баны'),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Поддержка'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Статистика',
+          ), // Новый пункт
         ],
       ),
     );
