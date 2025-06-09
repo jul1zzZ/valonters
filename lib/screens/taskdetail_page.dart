@@ -162,7 +162,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             _buildInfoRow(
               Icons.timer,
               "Примерная длительность",
-              data['estimatedDuration'] ?? 'Не указано',
+              data['estimatedDuration'] != null
+                  ? '${data['estimatedDuration']} ч.'
+                  : 'Не указано',
             ),
             _buildInfoRow(
               Icons.build,
