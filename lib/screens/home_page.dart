@@ -150,7 +150,7 @@ class _HomePageState extends State<HomePage> {
 
         transaction.update(docRef, {
           'assignedToList': assignedList,
-          'status': newStatus,
+          'status': 'in_progress',
         });
       });
 

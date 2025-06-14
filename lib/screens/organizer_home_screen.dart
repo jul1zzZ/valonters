@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class OrganizerHomePage extends StatelessWidget {
-  final String userId;
+// Импорт вашей страницы редактирования
+import 'package:valonters/screens/add_task_screen.dart';
 
-  const OrganizerHomePage({super.key, required this.userId});
+class OrganizerHomePage extends StatelessWidget {
+  const OrganizerHomePage({super.key});
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -21,7 +22,6 @@ class OrganizerHomePage extends StatelessWidget {
       case 'completed':
         return Colors.green;
       case 'rejected':
-        return Colors.red;
       case 'expired':
         return Colors.red;
       case 'in_progress':
@@ -41,10 +41,10 @@ class OrganizerHomePage extends StatelessWidget {
         return 'Выполнено';
       case 'rejected':
         return 'Отклонено';
-      case 'in_progress':
-        return 'В процессе';
       case 'expired':
         return 'Отклонено';
+      case 'in_progress':
+        return 'В процессе';
       default:
         return status;
     }
@@ -52,6 +52,7 @@ class OrganizerHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String userId = FirebaseAuth.instance.currentUser!.uid;
     final tasksRef = FirebaseFirestore.instance.collection('tasks');
 
     return Scaffold(
@@ -69,18 +70,11 @@ class OrganizerHomePage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: tasksRef.where('createdBy', isEqualTo: userId).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
-          final docs =
-              snapshot.data!.docs.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final assignedCount =
-                    (data['assignedToList'] as List?)?.length ?? 0;
-                final max = data['maxPeople'] ?? 200;
-                final status = data['status'] ?? '';
-                return status != 'done' && assignedCount < max;
-              }).toList();
+          final docs = snapshot.data!.docs;
 
           if (docs.isEmpty) {
             return const Center(child: Text("Нет активных заявок"));
@@ -153,16 +147,22 @@ class OrganizerHomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    trailing: Icon(
+                    trailing: const Icon(
                       Icons.arrow_forward_ios,
                       size: 16,
                       color: Colors.teal,
                     ),
                     onTap: () {
-                      Navigator.pushNamed(
+                      Navigator.push(
                         context,
-                        '/taskDetail',
-                        arguments: docs[index].data() as Map<String, dynamic>,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => AddTaskPage(
+                                userId: userId,
+                                taskDoc:
+                                    docs[index], // Передаем документ для редактирования
+                              ),
+                        ),
                       );
                     },
                   ),
@@ -176,7 +176,12 @@ class OrganizerHomePage extends StatelessWidget {
         backgroundColor: Colors.teal,
         child: const Icon(Icons.add),
         onPressed:
-            () => Navigator.pushNamed(context, '/addTask', arguments: userId),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddTaskPage(userId: userId),
+              ),
+            ),
       ),
     );
   }

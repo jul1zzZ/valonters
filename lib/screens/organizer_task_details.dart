@@ -52,8 +52,20 @@ class OrganizerTaskDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assigned = (taskData['assignedToList'] as List?)?.length ?? 0;
-    final maxPeople = taskData['maxPeople'] ?? 0;
+    final maxPeople = taskData['maxPeople']?.toString() ?? '0';
     final status = taskData['status'] ?? 'active';
+
+    final title = taskData['title'] ?? 'Без названия';
+    final location = taskData['location'] ?? 'Не указано';
+    final description = taskData['description'] ?? 'Нет описания';
+    final services = taskData['services'] ?? '-';
+
+    final estimatedDuration =
+        taskData['estimatedDuration'] != null
+            ? '${taskData['estimatedDuration']} ч.'
+            : 'Не указано';
+
+    final eventTime = formatDate(taskData['eventTime']);
 
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +85,7 @@ class OrganizerTaskDetailsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  taskData['title'] ?? 'Без названия',
+                  title,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -107,51 +119,27 @@ class OrganizerTaskDetailsPage extends StatelessWidget {
                   ],
                 ),
                 const Divider(height: 30),
-                if (taskData['location'] != null) ...[
-                  const Text(
-                    "Локация:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(taskData['location']),
-                  const SizedBox(height: 12),
-                ],
-                if (taskData['eventTime'] != null) ...[
-                  const Text(
-                    "Дата и время:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(formatDate(taskData['eventTime'])),
-                  const SizedBox(height: 12),
-                ],
-                if (taskData['description'] != null) ...[
-                  const Text(
-                    "Описание:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(taskData['description']),
-                  const SizedBox(height: 12),
-                ],
-                if (taskData['estimatedDuration'] != null) ...[
-                  const Text(
-                    "Примерная длительность:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(taskData['estimatedDuration']),
-                  const SizedBox(height: 12),
-                ],
-                if (taskData['services'] != null) ...[
-                  const Text(
-                    "Необходимые сервисы:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(taskData['services']),
-                  const SizedBox(height: 12),
-                ],
+                _buildInfoRow("Локация:", location),
+                _buildInfoRow("Дата и время:", eventTime),
+                _buildInfoRow("Описание:", description),
+                _buildInfoRow("Примерная длительность:", estimatedDuration),
+                _buildInfoRow("Необходимые сервисы:", services),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoRow(String title, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(value),
+        const SizedBox(height: 12),
+      ],
     );
   }
 }

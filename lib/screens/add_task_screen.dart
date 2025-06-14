@@ -6,8 +6,9 @@ import 'package:latlong2/latlong.dart';
 
 class AddTaskPage extends StatefulWidget {
   final String userId;
+  final DocumentSnapshot? taskDoc;
 
-  const AddTaskPage({super.key, required this.userId});
+  const AddTaskPage({super.key, required this.userId, this.taskDoc});
 
   @override
   State<AddTaskPage> createState() => _AddTaskPageState();
@@ -22,11 +23,28 @@ class _AddTaskPageState extends State<AddTaskPage> {
   int maxPeople = 1;
   LatLng? markerPos;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.taskDoc != null) {
+      final data = widget.taskDoc!.data() as Map<String, dynamic>;
+      title = data['title'] ?? '';
+      description = data['description'] ?? '';
+      category = data['category'] ?? '';
+      location = data['location'] ?? '';
+      estimatedDuration = (data['estimatedDuration'] ?? 1.0).toDouble();
+      services = data['services'] ?? '';
+      eventTime = (data['eventTime'] as Timestamp).toDate();
+      maxPeople = data['maxPeople'] ?? 1;
+      markerPos = LatLng(data['lat'], data['lng']);
+    }
+  }
+
   void saveTask() async {
     if (_formKey.currentState!.validate() &&
         markerPos != null &&
         eventTime != null) {
-      final newTask = {
+      final taskData = {
         'title': title,
         'description': description,
         'category': category,
@@ -35,16 +53,23 @@ class _AddTaskPageState extends State<AddTaskPage> {
         'services': services,
         'eventTime': Timestamp.fromDate(eventTime!),
         'maxPeople': maxPeople,
-        'assignedToList': [],
-        'createdBy': widget.userId,
-        'createdAt': Timestamp.now(),
-        'status': 'open',
-        'completedAt': null,
         'lat': markerPos!.latitude,
         'lng': markerPos!.longitude,
       };
 
-      await FirebaseFirestore.instance.collection('tasks').add(newTask);
+      if (widget.taskDoc != null) {
+        await widget.taskDoc!.reference.update(taskData);
+      } else {
+        await FirebaseFirestore.instance.collection('tasks').add({
+          ...taskData,
+          'assignedToList': [],
+          'createdBy': widget.userId,
+          'createdAt': Timestamp.now(),
+          'status': 'open',
+          'completedAt': null,
+        });
+      }
+
       Navigator.pop(context);
     }
   }
@@ -54,7 +79,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
     final date = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: eventTime ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
     );
@@ -62,7 +87,10 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
     final time = await showTimePicker(
       context: context,
-      initialTime: const TimeOfDay(hour: 12, minute: 0),
+      initialTime:
+          eventTime != null
+              ? TimeOfDay.fromDateTime(eventTime!)
+              : const TimeOfDay(hour: 12, minute: 0),
     );
     if (time == null) return;
 
@@ -88,9 +116,11 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.taskDoc != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Новая заявка"),
+        title: Text(isEditing ? "Редактировать заявку" : "Новая заявка"),
         backgroundColor: Colors.teal,
       ),
       body: SingleChildScrollView(
@@ -100,24 +130,28 @@ class _AddTaskPageState extends State<AddTaskPage> {
           child: Column(
             children: [
               TextFormField(
+                initialValue: title,
                 decoration: const InputDecoration(labelText: "Заголовок"),
                 onChanged: (v) => title = v,
                 validator: (v) => v!.isEmpty ? "Введите заголовок" : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: description,
                 decoration: const InputDecoration(labelText: "Описание"),
                 onChanged: (v) => description = v,
                 validator: (v) => v!.isEmpty ? "Введите описание" : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: category,
                 decoration: const InputDecoration(labelText: "Категория"),
                 onChanged: (v) => category = v,
                 validator: (v) => v!.isEmpty ? "Введите категорию" : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: location,
                 decoration: const InputDecoration(
                   labelText: "Местоположение (адрес)",
                 ),
@@ -126,6 +160,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: maxPeople.toString(),
                 decoration: const InputDecoration(
                   labelText: "Макс. участников (1–200)",
                 ),
@@ -133,13 +168,15 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 onChanged: (v) => maxPeople = int.tryParse(v) ?? 1,
                 validator: (v) {
                   final n = int.tryParse(v ?? '');
-                  if (n == null || n < 1 || n > 200)
+                  if (n == null || n < 1 || n > 200) {
                     return "Введите число от 1 до 200";
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: estimatedDuration.toString(),
                 decoration: const InputDecoration(
                   labelText: "Примерная длительность (в часах)",
                 ),
@@ -163,6 +200,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                initialValue: services,
                 decoration: const InputDecoration(
                   labelText: "Необходимые сервисы (через запятую)",
                 ),
@@ -193,9 +231,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 height: 200,
                 child: FlutterMap(
                   options: MapOptions(
-                    initialCenter: LatLng(55.751244, 37.618423),
+                    initialCenter: markerPos ?? LatLng(55.751244, 37.618423),
                     initialZoom: 12,
-                    onTap: (tapPosition, latlng) {
+                    onTap: (tapPos, latlng) {
                       setState(() {
                         markerPos = latlng;
                       });
@@ -229,7 +267,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
               ElevatedButton(
                 onPressed: saveTask,
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                child: const Text("Создать заявку"),
+                child: Text(
+                  isEditing ? "Сохранить изменения" : "Создать заявку",
+                ),
               ),
             ],
           ),

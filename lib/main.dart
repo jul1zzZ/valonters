@@ -10,6 +10,7 @@ import 'screens/guest_request_page.dart';
 import 'screens/add_task_screen.dart';
 import 'screens/organizer_home_screen.dart';
 import 'screens/organizer_task_details.dart';
+import 'screens/add_task_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,10 +78,7 @@ class MyApp extends StatelessWidget {
         '/admin': (context) => const AdminHomePage(),
         '/login': (context) => LoginPage(),
         '/guestRequest': (context) => const GuestRequestPage(),
-        '/organizerHome':
-            (context) => OrganizerHomePage(
-              userId: FirebaseAuth.instance.currentUser!.uid,
-            ),
+        '/organizerHome': (context) => OrganizerHomePage(),
         '/addTask': (context) {
           final userId = ModalRoute.of(context)!.settings.arguments as String;
           return AddTaskPage(userId: userId);
