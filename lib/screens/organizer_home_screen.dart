@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// Импорт вашей страницы редактирования
 import 'package:valonters/screens/add_task_screen.dart';
 
 class OrganizerHomePage extends StatelessWidget {
@@ -26,6 +25,8 @@ class OrganizerHomePage extends StatelessWidget {
         return Colors.red;
       case 'in_progress':
         return Colors.amber;
+      case 'failed':
+        return Colors.redAccent;
       default:
         return Colors.grey;
     }
@@ -42,9 +43,11 @@ class OrganizerHomePage extends StatelessWidget {
       case 'rejected':
         return 'Отклонено';
       case 'expired':
-        return 'Отклонено';
+        return 'Истекло';
       case 'in_progress':
         return 'В процессе';
+      case 'failed':
+        return 'Не выполнено';
       default:
         return status;
     }
@@ -77,7 +80,7 @@ class OrganizerHomePage extends StatelessWidget {
           final docs = snapshot.data!.docs;
 
           if (docs.isEmpty) {
-            return const Center(child: Text("Нет активных заявок"));
+            return const Center(child: Text("Нет заявок"));
           }
 
           return Padding(
@@ -94,6 +97,9 @@ class OrganizerHomePage extends StatelessWidget {
                 final assignedCount =
                     (data['assignedToList'] as List?)?.length ?? 0;
                 final maxPeople = data['maxPeople'] ?? 0;
+
+                final bool isEditable =
+                    !(status == 'completed' || status == 'failed');
 
                 return Card(
                   shape: RoundedRectangleBorder(
@@ -147,24 +153,33 @@ class OrganizerHomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    trailing: const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Colors.teal,
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => AddTaskPage(
-                                userId: userId,
-                                taskDoc:
-                                    docs[index], // Передаем документ для редактирования
-                              ),
-                        ),
-                      );
-                    },
+                    trailing:
+                        isEditable
+                            ? const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.teal,
+                            )
+                            : const Icon(
+                              Icons.lock,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                    onTap:
+                        isEditable
+                            ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => AddTaskPage(
+                                        userId: userId,
+                                        taskDoc: docs[index],
+                                      ),
+                                ),
+                              );
+                            }
+                            : null,
                   ),
                 );
               },

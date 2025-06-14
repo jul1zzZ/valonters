@@ -10,12 +10,34 @@ import 'screens/guest_request_page.dart';
 import 'screens/add_task_screen.dart';
 import 'screens/organizer_home_screen.dart';
 import 'screens/organizer_task_details.dart';
-import 'screens/add_task_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await checkAndUpdateTasksStatus();
   runApp(const MyApp());
+}
+
+Future<void> checkAndUpdateTasksStatus() async {
+  final now = DateTime.now();
+  final tasksSnapshot =
+      await FirebaseFirestore.instance.collection('tasks').get();
+
+  for (final doc in tasksSnapshot.docs) {
+    final data = doc.data();
+    final assignedToList = (data['assignedToList'] as List<dynamic>?) ?? [];
+    final maxPeople = data['maxPeople'] ?? 1;
+    final Timestamp eventTimestamp = data['eventTime'];
+    final eventTime = eventTimestamp.toDate();
+    final currentStatus = data['status'] ?? '';
+
+    if (now.isAfter(eventTime) &&
+        assignedToList.length < maxPeople &&
+        currentStatus != 'failed') {
+      await doc.reference.update({'status': 'failed'});
+    }
+  }
 }
 
 class MyApp extends StatelessWidget {
