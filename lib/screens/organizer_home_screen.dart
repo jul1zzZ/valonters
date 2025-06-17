@@ -27,6 +27,8 @@ class OrganizerHomePage extends StatelessWidget {
         return Colors.amber;
       case 'failed':
         return Colors.redAccent;
+      case 'open':
+        return Colors.lightGreen;
       default:
         return Colors.grey;
     }
@@ -48,6 +50,8 @@ class OrganizerHomePage extends StatelessWidget {
         return 'В процессе';
       case 'failed':
         return 'Не выполнено';
+      case 'open':
+        return 'Открыто';
       default:
         return status;
     }

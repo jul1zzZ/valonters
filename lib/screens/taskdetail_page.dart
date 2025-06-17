@@ -251,7 +251,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ],
 
-            if (data['status'] != 'completed')
+            if (data['status'] != 'completed' && data['status'] != 'failed')
               Center(
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.check_circle_outline),

@@ -1,15 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'taskdetail_page.dart';
 import 'package:valonters/screens/complete_taks_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  ProfileScreen({super.key});
+  late Future<Map<String, dynamic>> _userDataFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    _userDataFuture = _getUserData();
+  }
 
   Future<Map<String, dynamic>> _getUserData() async {
     final user = _auth.currentUser;
@@ -37,6 +54,8 @@ class ProfileScreen extends StatelessWidget {
         return 'Отклонено';
       case 'in_progress':
         return 'В процессе';
+      case 'failed':
+        return 'Отклонено';
       default:
         return status;
     }
@@ -50,6 +69,8 @@ class ProfileScreen extends StatelessWidget {
         return 'Администратор';
       case 'guest':
         return 'Гость';
+      case 'organizer':
+        return 'Организатор';
       default:
         return role;
     }
@@ -64,6 +85,8 @@ class ProfileScreen extends StatelessWidget {
       case 'completed':
         return Colors.green;
       case 'rejected':
+        return Colors.red;
+      case 'failed':
         return Colors.red;
       case 'in_progress':
         return Colors.amber;
@@ -87,6 +110,72 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  void _showEditDialog(BuildContext context, Map<String, dynamic> userData) {
+    final nameController = TextEditingController(text: userData['name'] ?? '');
+    final phoneController = TextEditingController(
+      text: userData['phone'] ?? '',
+    );
+
+    final phoneMaskFormatter = MaskTextInputFormatter(
+      mask: '+7 (###) ###-##-##',
+      filter: {"#": RegExp(r'[0-9]')},
+      type: MaskAutoCompletionType.lazy,
+    );
+
+    phoneController.text = phoneMaskFormatter.maskText(phoneController.text);
+
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: Text('Редактировать профиль'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: 'Имя'),
+                ),
+                TextField(
+                  controller: phoneController,
+                  decoration: InputDecoration(labelText: 'Телефон'),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [phoneMaskFormatter],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Отмена'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user != null) {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .update({
+                          'name': nameController.text.trim(),
+                          'phone': phoneMaskFormatter.getMaskedText(),
+                        });
+
+                    // Обновляем данные в состоянии, чтобы интерфейс обновился
+                    setState(() {
+                      _loadUserData();
+                    });
+                  }
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                child: Text('Сохранить'),
+              ),
+            ],
+          ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
@@ -94,7 +183,7 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text('Профиль'), backgroundColor: Colors.teal),
       body: FutureBuilder<Map<String, dynamic>>(
-        future: _getUserData(),
+        future: _userDataFuture,
         builder: (context, snapshot) {
           if (!snapshot.hasData)
             return Center(child: CircularProgressIndicator());
@@ -119,7 +208,13 @@ class ProfileScreen extends StatelessWidget {
                   user?.email ?? '',
                   style: TextStyle(color: Colors.grey[700]),
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => _showEditDialog(context, userData),
+                  icon: Icon(Icons.edit, size: 18),
+                  label: Text('Редактировать'),
+                ),
+                SizedBox(height: 8),
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(
@@ -210,7 +305,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           Text('Всего заявок: ${tasks.length}'),
                           Text(
-                            'Отработано часов: ${totalWorkedMinutes.toStringAsFixed(1)}',
+                            'Отработано часов: ${(totalWorkedMinutes / 60).toStringAsFixed(1)}',
                           ),
                           SizedBox(height: 10),
                           Expanded(
@@ -324,18 +419,10 @@ class ProfileScreen extends StatelessWidget {
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors.teal,
                                                 padding: EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 6,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
+                                                  horizontal: 16,
                                                 ),
                                               ),
-                                              child: Text(
-                                                'Завершить',
-                                                style: TextStyle(fontSize: 12),
-                                              ),
+                                              child: Text('Завершить'),
                                             )
                                             : null,
                                     onTap: () {

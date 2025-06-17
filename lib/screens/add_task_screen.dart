@@ -32,7 +32,16 @@ class _AddTaskPageState extends State<AddTaskPage> {
       description = data['description'] ?? '';
       category = data['category'] ?? '';
       location = data['location'] ?? '';
-      estimatedDuration = (data['estimatedDuration'] ?? 1.0).toDouble();
+
+      final rawDuration = data['estimatedDuration'] ?? 1.0;
+      if (rawDuration is num) {
+        estimatedDuration = rawDuration.toDouble();
+      } else if (rawDuration is String) {
+        estimatedDuration = double.tryParse(rawDuration) ?? 1.0;
+      } else {
+        estimatedDuration = 1.0;
+      }
+
       services = data['services'] ?? '';
       eventTime = (data['eventTime'] as Timestamp).toDate();
       maxPeople = data['maxPeople'] ?? 1;
